@@ -20,7 +20,7 @@ import argparse
 from pathlib import Path
 
 import pandas as pd
-from sklearn.model_selection import GroupShuffleSplit
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 
 from reproducibility import load_config, set_seed
 
@@ -58,25 +58,37 @@ def make_splits(
             "Lengkapi manifest terlebih dahulu."
         )
 
-    # Langkah 1: Split trainval vs test (20% test)
-    gss1 = GroupShuffleSplit(
-        n_splits=1, test_size=cfg["test_size"], random_state=seed
-    )
-    train_idx, test_idx = next(
-        gss1.split(df_dev, y=df_dev["label"], groups=df_dev["speaker_id"])
-    )
-    trainval = df_dev.iloc[train_idx].copy()
-    test     = df_dev.iloc[test_idx].copy()
+    # Fallback jika jumlah speaker terlalu sedikit
+    n_speakers = df_dev["speaker_id"].nunique()
+    
+    if n_speakers < 5:
+        print(f"  [WARNING] Hanya {n_speakers} speaker unik. Fallback ke random split (tanpa grouping).")
+        trainval, test = train_test_split(
+            df_dev, test_size=cfg.get("test_size", 0.2), random_state=seed, stratify=df_dev["label"]
+        )
+        train, val = train_test_split(
+            trainval, test_size=cfg.get("val_size", 0.2), random_state=seed + 1, stratify=trainval["label"]
+        )
+    else:
+        # Langkah 1: Split trainval vs test (20% test)
+        gss1 = GroupShuffleSplit(
+            n_splits=1, test_size=cfg.get("test_size", 0.2), random_state=seed
+        )
+        train_idx, test_idx = next(
+            gss1.split(df_dev, y=df_dev["label"], groups=df_dev["speaker_id"])
+        )
+        trainval = df_dev.iloc[train_idx].copy()
+        test     = df_dev.iloc[test_idx].copy()
 
-    # Langkah 2: Split train vs val (20% dari trainval)
-    gss2 = GroupShuffleSplit(
-        n_splits=1, test_size=cfg["val_size"], random_state=seed + 1
-    )
-    tr_idx, va_idx = next(
-        gss2.split(trainval, y=trainval["label"], groups=trainval["speaker_id"])
-    )
-    train = trainval.iloc[tr_idx].copy()
-    val   = trainval.iloc[va_idx].copy()
+        # Langkah 2: Split train vs val (20% dari trainval)
+        gss2 = GroupShuffleSplit(
+            n_splits=1, test_size=cfg.get("val_size", 0.2), random_state=seed + 1
+        )
+        tr_idx, va_idx = next(
+            gss2.split(trainval, y=trainval["label"], groups=trainval["speaker_id"])
+        )
+        train = trainval.iloc[tr_idx].copy()
+        val   = trainval.iloc[va_idx].copy()
 
     # Assign split label
     train["split"] = "train"
