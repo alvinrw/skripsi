@@ -1,0 +1,63 @@
+# ============================================================
+# baseline.yaml
+# Konfigurasi utama eksperimen skripsi residual-modulasi
+# Semua parameter eksperimen dibaca dari sini (JANGAN hardcode)
+# ============================================================
+
+# --- Reproducibility ---
+seed: 2026
+
+# --- Audio ---
+sample_rate: 16000
+segment_seconds: 2.0
+hop_seconds: 1.0
+
+# --- Label convention (JANGAN ubah) ---
+label_real: 0
+label_fake: 1
+
+# --- Split ---
+split_group: speaker_id     # GroupShuffleSplit berdasarkan speaker
+test_size: 0.20
+val_size: 0.20              # dari porsi train
+
+# --- MFCC ---
+mfcc_n: 20
+mfcc_n_fft: 512
+mfcc_hop_length: 160
+mfcc_win_length: 400
+
+# --- LFCC ---
+lfcc_n: 20
+lfcc_n_filters: 40
+lfcc_fmax: 8000
+
+# --- Residual LPC ---
+lpc_order: 16               # order default; ablation: [12, 16, 20]
+lpc_frame_ms: 25            # ms
+lpc_hop_ms: 10              # ms
+lpc_min_energy: 1.0e-8      # frame dengan energi di bawah ini dilewati
+
+# --- Modulation ---
+envelope_sr: 100            # Hz (setelah resample envelope)
+modulation_lowpass_hz: 40   # Hz (butter lowpass sebelum resample)
+modulation_max_hz: 20       # Hz (batas atas analisis modulasi)
+modulation_bands:
+  - [0.5, 2.0]
+  - [2.0, 4.0]
+  - [4.0, 8.0]
+  - [8.0, 20.0]
+
+# --- Model ---
+svm_C: 10
+svm_kernel: rbf
+rf_n_estimators: 200
+rf_max_depth: null
+xgb_n_estimators: 200
+xgb_max_depth: 6
+xgb_learning_rate: 0.05
+
+# --- Evaluasi ---
+n_bootstrap: 2000
+n_seeds: 3                  # seed utama: [2026, 2027, 2028]
+seeds: [2026, 2027, 2028]
