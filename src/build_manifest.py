@@ -111,7 +111,7 @@ def build_manifest(
     skipped = 0
 
     for path in tqdm(audio_files, desc="Building manifest"):
-        rel_path = str(path.relative_to(data_path.parent))  # relatif dari root proyek
+        rel_path = path.as_posix()  # gunakan path as-is (e.g. data/raw/...)
 
         try:
             info = sf.info(str(path))

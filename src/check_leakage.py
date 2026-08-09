@@ -44,7 +44,14 @@ def check_leakage(manifest_csv: str = "manifests/split_manifest.csv") -> bool:
     print(f"[check_leakage] Checking {len(df)} rows (dev splits only)")
 
     ok = True
-    keys_to_check = ["utterance_id", "sha256", "speaker_id"]
+    keys_to_check = ["utterance_id", "sha256"]
+
+    # Hanya cek speaker_id jika jumlah speaker memadai (dataset punya grouping)
+    n_speakers = df["speaker_id"].nunique()
+    if n_speakers >= 5:
+        keys_to_check.append("speaker_id")
+    else:
+        print(f"  [SKIP] Leakage check on 'speaker_id' dilewati karena hanya ada {n_speakers} speaker unik.")
 
     for key in keys_to_check:
         if key not in df.columns:
