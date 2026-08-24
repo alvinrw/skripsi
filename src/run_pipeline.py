@@ -226,10 +226,11 @@ def step_train(cfg: dict, args: argparse.Namespace) -> bool:
 
 def step_stats(cfg: dict, args: argparse.Namespace) -> bool:
     from statistical_tests import run_statistical_tests
+    dur_suffix = f"_{args.duration}" if getattr(args, "duration", None) else ""
     try:
         run_statistical_tests(
-            features_csv = "results/features_train.csv",
-            out_csv      = "results/statistical_tests.csv",
+            features_csv = f"results/features{dur_suffix}_train.csv",
+            out_csv      = f"results/statistical_tests{dur_suffix}.csv",
             n_boot       = cfg.get("n_bootstrap", 2000),
             seed         = cfg["seed"],
         )
@@ -242,13 +243,14 @@ def step_stats(cfg: dict, args: argparse.Namespace) -> bool:
 
 def step_consistency(cfg: dict, args: argparse.Namespace) -> bool:
     from evidence_consistency import analyze_consistency
+    dur_suffix = f"_{args.duration}" if getattr(args, "duration", None) else ""
     try:
         analyze_consistency(
-            scores_csv         = "results/utterance_scores.csv",
+            scores_csv         = f"results/utterance_scores{dur_suffix}.csv",
             baseline_col       = "score_B2",
             evidence_col       = "score_E4c",
-            out_consistency    = "results/evidence_consistency.csv",
-            out_error          = "results/error_analysis.csv",
+            out_consistency    = f"results/evidence_consistency{dur_suffix}.csv",
+            out_error          = f"results/error_analysis{dur_suffix}.csv",
             split              = "test",
         )
         return True
@@ -260,13 +262,14 @@ def step_consistency(cfg: dict, args: argparse.Namespace) -> bool:
 
 def step_bootstrap(cfg: dict, args: argparse.Namespace) -> bool:
     from bootstrap_difference import compare_models
+    dur_suffix = f"_{args.duration}" if getattr(args, "duration", None) else ""
     try:
         compare_models(
-            scores_csv = "results/utterance_scores.csv",
+            scores_csv = f"results/utterance_scores{dur_suffix}.csv",
             split      = "test",
             n_boot     = cfg.get("n_bootstrap", 2000),
             seed       = cfg["seed"],
-            out_csv    = "results/bootstrap_comparisons.csv",
+            out_csv    = f"results/bootstrap_comparisons{dur_suffix}.csv",
         )
         return True
     except Exception as e:
