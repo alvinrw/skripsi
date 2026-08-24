@@ -38,14 +38,30 @@ def check_eligibility(filepath, sr=16000, min_duration=1.0):
     except Exception as e:
         return False, f"Error: {e}"
 
-def extract_speaker_id(filename):
-    filename = filename.lower()
-    # Handle id10001-real.wav etc.
-    if '-' in filename:
-        return filename.split('-')[0]
-    if '_' in filename:
-        return filename.split('_')[0]
-    return filename
+def extract_speaker_id(filepath):
+    """
+    Ekstrak speaker ID dari nama file.
+    Mendukung format VoxCeleb (id10001-real.wav), nama bebas, maupun
+    pesan WhatsApp (WhatsApp Ptt 2026-07-28 ...) yang semuanya akan
+    diperlakukan sebagai satu speaker berbeda per file.
+    """
+    stem = Path(filepath).stem.lower()
+
+    # Format WhatsApp Ptt: gunakan nama file lengkap sebagai speaker unik
+    if stem.startswith("whatsapp ptt") or stem.startswith("whatsapp"):
+        # Pakai seluruh nama file agar setiap pesan suara = 1 speaker unik
+        return stem
+
+    # Format VoxCeleb: id10001-real, id10002-spoof, dst.
+    if stem.startswith("id") and "-" in stem:
+        return stem.split("-")[0]
+
+    # Format dengan underscore: alvin_part1 -> alvin
+    if "_" in stem:
+        return stem.split("_")[0]
+
+    # Default: nama file penuh = 1 speaker unik
+    return stem
 
 def process_dataset(drive_dir, out_dir, zip_out=None):
     print("\n[mount] Bukan lingkungan Google Colab. Mount dilewati.")
