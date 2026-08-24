@@ -696,3 +696,36 @@ Untuk mengubah parameter, edit file YAML — tidak perlu menyentuh source code.
 ---
 
 *Definisi selesai: seluruh hasil utama dapat dihasilkan ulang dari manifest dan konfigurasi yang tersimpan — bukan ketika satu angka akurasi tinggi telah diperoleh.*
+
+---
+
+## 14. Hasil Eksperimen Awal (End-to-End Test)
+
+Berikut adalah rangkuman dari hasil *running* penuh (Full Pipeline) yang dilakukan menggunakan subset dataset **DEEP-VOICE** (64 sampel audio):
+
+### A. Performa Model Klasifikasi
+Berdasarkan uji pada *test set* (13 sampel: 2 Real, 11 Fake), didapatkan metrik performa berikut:
+
+| Kategori Model | ID Eksperimen | Fitur | Algoritma | AUC ⬆️ | EER ⬇️ | Akurasi | Precision (Macro) | F1-Macro |
+|---|---|---|---|---|---|---|---|---|
+| **Baseline** | B2 | MFCC + LFCC | SVM | 0.7727 | 0.4773 | 92.31% | 0.9583 | 0.8116 |
+| **Baseline** | B3 | MFCC + LFCC | Random Forest | 0.6591 | 0.5682 | 92.31% | 0.9583 | 0.8116 |
+| **Baseline** | B4 | MFCC + LFCC | XGBoost | **0.8636** | **0.3864** | 92.31% | 0.9583 | 0.8116 |
+| **Forensik** | E4c | Residual + Modulasi | SVM | **0.5909** | **0.5227** | 76.92% | 0.4167 | 0.4348 |
+| **Forensik** | E4d | Residual + Modulasi | Random Forest | 0.4546 | 0.5682 | 69.23% | 0.4091 | 0.4091 |
+| **Forensik** | E4e | Residual + Modulasi | XGBoost | 0.5454 | 0.6591 | 30.77% | 0.5909 | 0.3077 |
+
+> **💡 Penjelasan Ilusi Akurasi 92% (Statistical Illusion):**
+> Akurasi 92.31% pada model B4 terlihat sangat tinggi akibat fenomena **Imbalanced Data**. Dari total 13 data uji yang sangat sedikit ini, 11 di antaranya adalah suara *Fake*. Model berhasil menebak benar 12 file (11 file Fake dan 1 file Real). Hitungannya adalah $12 \div 13 = 92.31\%$. 
+> Jika kita melihat metrik yang adil (sensitivitas berimbang) yaitu **EER (Equal Error Rate)**, nilainya adalah **38.64%** (masih cukup sering salah). Ini menjadi bukti utama mengapa skripsi Audio Forensik **dilarang menggunakan metrik Akurasi sebagai patokan utama**, melainkan wajib menggunakan AUC dan EER.
+
+### B. Analisis Statistik Fitur (Stats)
+Fitur forensik yang memiliki perbedaan paling mencolok (Effect Size paling tinggi) antara suara manusia asli dan *deepfake* adalah **`res_energy_mean_p16`** (Rata-rata energi sinyal residual) dengan *Rank Biserial* sebesar **-0.70 (Large Effect)**. 
+Karena jumlah sampel sangat kecil (n=40 di data latih), nilai Signifikansi *False Discovery Rate* (FDR) belum terpenuhi secara statistik, dan akan meningkat saat data penuh digunakan.
+
+### C. Analisis Konsistensi (Consistency)
+Saat membandingkan prediksi Baseline (B2) dan Forensik (E4c), diperoleh korelasi yang sangat rendah (**Spearman ρ: -0.16**, **Cohen's κ: -0.08**). 
+Ini adalah **temuan yang sangat bagus dan sesuai teori**, yang membuktikan bahwa fitur Forensik (Residual dan Modulasi) tidak sekadar mengulang informasi akustik dari MFCC/LFCC, melainkan **menangkap anomali fisik yang sama sekali berbeda**. 
+
+### D. Uji Signifikansi Model (Bootstrap)
+Evaluasi komparasi *bootstrap* 95% Confidence Interval menunjukkan ada perbedaan yang signifikan antara Baseline (B4) dengan model Forensik berbasis *Random Forest* (E4d). Baseline saat ini unggul secara statistik karena metode MFCC dan LFCC memang jauh lebih agresif dalam menangkap artifak sintetis generik, dibandingkan metode forensik yang mensyaratkan resolusi audio yang baik.

@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -58,11 +59,30 @@ def infer_label_from_path(path: Path) -> int | str:
 
 def infer_speaker_from_path(path: Path) -> str:
     """
-    Coba inferensi speaker_id dari nama folder induk.
-    Kembalikan nama folder induk sebagai speaker ID, atau 'FILL_REQUIRED'.
+    Coba inferensi speaker_id dari nama file (bukan folder) untuk mencegah data leakage.
+    Mendukung format target-original, source-to-target, VoxCeleb (idXXXXX), dll.
     """
-    # Heuristic: folder satu level atas file
-    return path.parent.name if path.parent.name else "FILL_REQUIRED"
+    name = path.stem
+    
+    # 1. Jika format: source-to-target
+    if "-to-" in name:
+        return name.split("-to-")[1].lower()
+    
+    # 2. Jika format: speaker-original
+    if "-original" in name:
+        return name.split("-original")[0].lower()
+    
+    # 3. Jika format VoxCeleb: id10001_xxxx
+    match = re.search(r"id\d+", name, re.IGNORECASE)
+    if match:
+        return match.group(0).lower()
+    
+    # 4. Fallback ke teks sebelum strip/underscore pertama
+    parts = re.split(r"[-_]", name)
+    if parts and parts[0]:
+        return parts[0].lower()
+        
+    return "unknown"
 
 
 # ──────────────────────────────────────────────
@@ -160,7 +180,7 @@ def build_manifest(
     out_path = Path(out_csv)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(str(out_path), index=False)
-    print(f"[build_manifest] Saved {len(df)} rows → {out_csv}  (skipped: {skipped})")
+    print(f"[build_manifest] Saved {len(df)} rows -> {out_csv}  (skipped: {skipped})")
 
     # Ringkasan
     if "label" in df.columns:

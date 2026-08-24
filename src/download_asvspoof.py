@@ -151,7 +151,7 @@ def parse_asvspoof_metadata(
     # Simpan
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_csv, index=False)
-    print(f"[asvspoof] Manifest saved → {out_csv}")
+    print(f"[asvspoof] Manifest saved -> {out_csv}")
 
     return df
 

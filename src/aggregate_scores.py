@@ -62,7 +62,7 @@ def aggregate_scores(
 
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     utt.to_csv(out_csv, index=False)
-    print(f"[aggregate] Saved {len(utt)} utterance rows → {out_csv}")
+    print(f"[aggregate] Saved {len(utt)} utterance rows -> {out_csv}")
 
     # Ringkasan per split
     if "split" in utt.columns:

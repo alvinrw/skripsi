@@ -6,8 +6,8 @@ menggunakan GroupShuffleSplit (tanpa speaker leakage).
 
 Alur:
 1. Baca manifests/source_manifest.csv
-2. GroupShuffleSplit → (trainval, test) berdasarkan speaker
-3. GroupShuffleSplit lagi pada trainval → (train, val)
+2. GroupShuffleSplit -> (trainval, test) berdasarkan speaker
+3. GroupShuffleSplit lagi pada trainval -> (train, val)
 4. Assign kolom 'split' dan simpan ke manifests/split_manifest.csv
 
 Cara pakai:
@@ -110,7 +110,7 @@ def make_splits(
     # Simpan
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_csv, index=False)
-    print(f"[make_splits] Saved → {out_csv}")
+    print(f"[make_splits] Saved -> {out_csv}")
 
     return out
 

@@ -130,8 +130,19 @@ def step_smoke_test(cfg: dict) -> bool:
             print(e)
         return False
 
-    print("\n[Step 0] ✓ All smoke test checks PASSED")
+    print("\n[Step 0] [OK] All smoke test checks PASSED")
     return True
+
+
+def step_prepare(cfg: dict, args: argparse.Namespace) -> bool:
+    import sys
+    from subprocess import run
+    print("\n[Step 0b] Menjalankan persiapan dataset VoxCPM dari Google Drive...")
+    cmd = [sys.executable, "src/prepare_dataset.py", "--drive_dir", getattr(args, "drive_dir", "data/raw"), "--out_dir", getattr(args, "out_dir", "data/processed")]
+    if getattr(args, "zip_out", None):
+        cmd += ["--zip_out", args.zip_out]
+    res = run(cmd)
+    return res.returncode == 0
 
 
 def step_manifest(cfg: dict, args: argparse.Namespace) -> bool:
@@ -187,6 +198,7 @@ def step_features(cfg: dict, args: argparse.Namespace) -> bool:
                 config_path  = args.config,
                 lpc_order    = order,
                 smoke_test   = args.smoke_test,
+                duration     = getattr(args, "duration", None),
             )
         return True
     except Exception as e:
@@ -203,6 +215,7 @@ def step_train(cfg: dict, args: argparse.Namespace) -> bool:
             config_path = args.config,
             lpc_order   = args.lpc_order or 16,
             smoke_test  = args.smoke_test,
+            duration    = getattr(args, "duration", None),
         )
         return True
     except Exception as e:
@@ -268,6 +281,7 @@ def step_bootstrap(cfg: dict, args: argparse.Namespace) -> bool:
 
 STEP_MAP = {
     "smoke":      step_smoke_test,
+    "prepare":    step_prepare,
     "manifest":   step_manifest,
     "splits":     step_splits,
     "leakage":    step_leakage,
@@ -278,7 +292,7 @@ STEP_MAP = {
     "bootstrap":  step_bootstrap,
 }
 
-ALL_STEPS = ["smoke", "manifest", "splits", "leakage",
+ALL_STEPS = ["smoke", "prepare", "manifest", "splits", "leakage",
              "features", "train", "stats", "consistency", "bootstrap"]
 
 
@@ -298,6 +312,14 @@ def main():
                         help="Gunakan subset kecil data untuk validasi pipeline cepat")
     parser.add_argument("--label_map",  default=None,
                         help="Path ke CSV label map (opsional)")
+    parser.add_argument("--duration", type=str, default=None,
+                        help="Durasi audio untuk diekstrak fiturnya (misal: '2s', '3s')")
+    parser.add_argument("--drive_dir", type=str, default="data/raw",
+                        help="Path ke data mentah (digunakan oleh step prepare)")
+    parser.add_argument("--out_dir", type=str, default="data/processed",
+                        help="Path ke output chunking (digunakan oleh step prepare)")
+    parser.add_argument("--zip_out", type=str, default=None,
+                        help="Path zip output opsional (digunakan oleh step prepare)")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -328,13 +350,13 @@ def main():
             ok = step_fn(cfg, args)
 
         if not ok:
-            print(f"\n✗ Step '{step_name}' FAILED. Pipeline dihentikan.")
+            print(f"\n[FAIL] Step '{step_name}' FAILED. Pipeline dihentikan.")
             sys.exit(1)
 
-        print(f"✓ Step '{step_name}' selesai.")
+        print(f"[OK] Step '{step_name}' selesai.")
 
     print(f"\n{'='*60}")
-    print("✓ Pipeline selesai!")
+    print("[OK] Pipeline selesai!")
     print(f"{'='*60}")
 
 

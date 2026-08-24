@@ -2,7 +2,7 @@
 src/spectral_features.py
 =========================
 Ekstraksi fitur spektral:
-  - MFCC (+ delta + delta²)  → 20*4 * 3 = 240 dimensi
+  - MFCC (+ delta + delta²)  -> 20*4 * 3 = 240 dimensi
   - Statistik: mean, std, Q25, Q75 per koefisien
 
 Semua parameter dibaca dari config YAML.
@@ -21,7 +21,7 @@ import librosa
 def summarize_matrix(mat: np.ndarray) -> np.ndarray:
     """
     Hitung statistik agregat dari matriks fitur (n_coef × n_frames).
-    Output: vektor [mean, std, Q25, Q75] per koefisien → panjang 4 * n_coef.
+    Output: vektor [mean, std, Q25, Q75] per koefisien -> panjang 4 * n_coef.
     """
     return np.concatenate([
         np.mean(mat, axis=1),

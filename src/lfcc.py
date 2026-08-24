@@ -8,10 +8,10 @@ Perbedaan MFCC vs LFCC:
 - LFCC : filterbank linear-scale (equally-spaced dalam Hz)
 
 Implementasi:
-1. STFT → power spectrum
+1. STFT -> power spectrum
 2. Linear filterbank (equally spaced dari 0 Hz ke fmax)
 3. Log compression
-4. DCT → cepstral coefficients
+4. DCT -> cepstral coefficients
 5. Statistik mean & std per koefisien
 """
 
@@ -60,7 +60,7 @@ def linear_filterbank(
                 (right  - freqs) / (right  - center + 1e-9),
             )
         )
-        # Dot product: (n_freq,) · (n_freq, n_frames) → (n_frames,)
+        # Dot product: (n_freq,) · (n_freq, n_frames) -> (n_frames,)
         out.append(np.sum(power * w[:, None], axis=0))
 
     return np.asarray(out, dtype=np.float32)  # (n_filters, n_frames)
@@ -113,7 +113,7 @@ def lfcc_features(
     # Log compression
     log_fb = np.log(fb + 1e-8)
 
-    # DCT Type-II → ambil n_lfcc koefisien pertama
+    # DCT Type-II -> ambil n_lfcc koefisien pertama
     cep = dct(log_fb, type=2, axis=0, norm="ortho")[:n_lfcc]  # (n_lfcc, n_frames)
 
     # Statistik agregat: mean + std per koefisien

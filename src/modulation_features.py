@@ -6,11 +6,11 @@ Ekstraksi bukti modulasi dari envelope amplitudo.
 Analisis modulasi menilai perubahan envelope dan ritme jangka menengah.
 
 Alur (dari panduan):
-    1. Analytical signal (Hilbert) → envelope a(t)
-    2. Lowpass filter 40 Hz → smooth envelope
+    1. Analytical signal (Hilbert) -> envelope a(t)
+    2. Lowpass filter 40 Hz -> smooth envelope
     3. Resample ke envelope_sr=100 Hz
-    4. Kurangi mean → de-mean envelope
-    5. FFT dengan Hanning window → modulation spectrum M(f_m)
+    4. Kurangi mean -> de-mean envelope
+    5. FFT dengan Hanning window -> modulation spectrum M(f_m)
     6. Fokus 0–20 Hz (dinamika temporal ujaran)
 
 Fitur (7 dimensi):
@@ -44,7 +44,7 @@ def band_energy(
 ) -> float:
     """
     Hitung energi relatif dalam pita frekuensi [low, high) Hz.
-    Ternormalisasi terhadap total energi → rentang [0, 1].
+    Ternormalisasi terhadap total energi -> rentang [0, 1].
     """
     idx = (freq >= low) & (freq < high)
     return float(power[idx].sum() / (power.sum() + 1e-12))
@@ -92,14 +92,14 @@ def modulation_features(
     if bands is None:
         bands = [(0.5, 2.0), (2.0, 4.0), (4.0, 8.0), (8.0, 20.0)]
 
-    # 1. Analytical signal → envelope
+    # 1. Analytical signal -> envelope
     env = np.abs(hilbert(x.astype(np.float64)))
 
     # 2. Lowpass filter (menghapus komponen cepat sebelum downsample)
     sos = butter(4, lowpass_hz, btype="lowpass", fs=sr, output="sos")
     env = sosfiltfilt(sos, env)
 
-    # 3. Resample ke envelope_sr (misal 16000 Hz → 100 Hz)
+    # 3. Resample ke envelope_sr (misal 16000 Hz -> 100 Hz)
     # resample_poly memerlukan bilangan bulat up/down
     from math import gcd
     g = gcd(envelope_sr, sr)
@@ -108,7 +108,7 @@ def modulation_features(
     # 4. De-mean
     env = env - env.mean()
 
-    # 5. FFT dengan Hanning window → power spectrum
+    # 5. FFT dengan Hanning window -> power spectrum
     win    = np.hanning(len(env))
     spec   = np.abs(np.fft.rfft(env * win)) ** 2
     freq   = np.fft.rfftfreq(len(env), d=1.0 / envelope_sr)
@@ -119,7 +119,7 @@ def modulation_features(
     spec = spec[keep]
 
     if spec.sum() < 1e-20:
-        # Envelope hampir nol → return NaN
+        # Envelope hampir nol -> return NaN
         return np.full(len(bands) + 3, np.nan, dtype=np.float32)
 
     # 7. Distribusi probabilitas untuk entropi

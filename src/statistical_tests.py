@@ -41,9 +41,9 @@ def rank_biserial_correlation(u: float, n1: int, n2: int) -> float:
     """
     Rank-biserial correlation (effect size untuk Mann-Whitney U).
     rb ∈ [-1, 1]:
-        rb = 0    → tidak ada perbedaan
-        |rb| = 1  → total separation
-        |rb| ≥ 0.3 → kecil; ≥ 0.5 → sedang; ≥ 0.7 → besar
+        rb = 0    -> tidak ada perbedaan
+        |rb| = 1  -> total separation
+        |rb| ≥ 0.3 -> kecil; ≥ 0.5 -> sedang; ≥ 0.7 -> besar
     """
     return float(1.0 - 2.0 * u / (n1 * n2))
 
@@ -178,7 +178,7 @@ def run_statistical_tests(
 
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_csv, index=False)
-    print(f"[statistical_tests] Saved {len(out)} results → {out_csv}")
+    print(f"[statistical_tests] Saved {len(out)} results -> {out_csv}")
 
     # Ringkasan
     n_sig = out["significant_fdr"].sum()

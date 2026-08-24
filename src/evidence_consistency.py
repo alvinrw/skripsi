@@ -147,7 +147,7 @@ def analyze_consistency(
     # ── Simpan ──
     Path(out_consistency).parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame([results]).to_csv(out_consistency, index=False)
-    print(f"\n  Saved consistency summary → {out_consistency}")
+    print(f"\n  Saved consistency summary -> {out_consistency}")
 
     # Error analysis: kasus dengan keputusan salah
     error_df = df[df["consistency_category"] != "consistent_correct"].copy()
@@ -158,7 +158,7 @@ def analyze_consistency(
                  "consistency_category"]
     cols_keep = [c for c in cols_keep if c in error_df.columns]
     error_df[cols_keep].to_csv(out_error, index=False)
-    print(f"  Saved error analysis  → {out_error}  ({len(error_df)} cases)")
+    print(f"  Saved error analysis  -> {out_error}  ({len(error_df)} cases)")
 
     return results
 

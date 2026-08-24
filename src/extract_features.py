@@ -63,7 +63,7 @@ def extract_utterance_features(
 
     Strategi:
     - Load utterance lengkap
-    - Segmentasi → ambil fitur per segmen
+    - Segmentasi -> ambil fitur per segmen
     - Agregasi segmen: mean (untuk baseline MFCC/LFCC dan modulasi)
     - Residual: dihitung per frame pada seluruh utterance
 
@@ -196,6 +196,7 @@ def extract_all_features(
     lpc_order: int = 16,
     smoke_test: bool = False,
     smoke_n: int = 100,
+    duration: str = None,
 ) -> None:
     """
     Ekstraksi fitur untuk semua utterance di manifest.
@@ -212,7 +213,10 @@ def extract_all_features(
     cfg = load_config(config_path)
     set_seed(cfg["seed"])
 
-    df = pd.read_csv(manifest_csv)
+    if duration and manifest_csv == "manifests/split_manifest.csv":
+        manifest_csv = f"manifests/split_manifest_{duration}.csv"
+
+    df = pd.read_csv(manifest_csv, sep=None, engine='python')
     print(f"[extract_features] Loaded {len(df)} utterances from {manifest_csv}")
 
     if smoke_test:
@@ -223,6 +227,7 @@ def extract_all_features(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     suffix = f"_p{lpc_order}" if lpc_order != 16 else ""
+    dur_suffix = f"_{duration}" if duration else ""
 
     # Proses per split
     splits = df["split"].unique()
@@ -247,7 +252,7 @@ def extract_all_features(
             entry = {
                 "utterance_id": row["utterance_id"],
                 "speaker_id":   row["speaker_id"],
-                "label":        int(row["label"]),
+                "label":        int(row["label_idx"]) if "label_idx" in row else int(row["label"]),
                 "split":        split_name,
                 "dataset":      row.get("dataset", "unknown"),
                 "generator_id": row.get("generator_id", "unknown"),
@@ -257,9 +262,9 @@ def extract_all_features(
 
         if rows:
             df_out = pd.DataFrame(rows)
-            out_csv = out_dir / f"features{suffix}_{split_name}.csv"
+            out_csv = out_dir / f"features{suffix}{dur_suffix}_{split_name}.csv"
             df_out.to_csv(str(out_csv), index=False)
-            print(f"  Saved {len(df_out)} rows → {out_csv}  (failed: {failed})")
+            print(f"  Saved {len(df_out)} rows -> {out_csv}  (failed: {failed})")
 
             # Laporan NaN
             nan_cols = df_out.isnull().sum()

@@ -17,7 +17,7 @@ Fitur per frame (5 fitur):
     4. excitation_irregularity — mean |Δe| / std(e)  (ketidakberaturan eksitasi)
     5. kurtosis              — kurtosis residual (peakedness)
 
-Agregasi ke utterance: mean, std, median → 15 fitur per utterance
+Agregasi ke utterance: mean, std, median -> 15 fitur per utterance
 Ablation LPC order: p ∈ {12, 16, 20}
 """
 
@@ -76,7 +76,7 @@ def residual_from_frame(
     energy = float(np.mean(frame_win ** 2))
 
     if energy < min_energy:
-        return None  # frame terlalu senyap → koefisien tidak stabil
+        return None  # frame terlalu senyap -> koefisien tidak stabil
 
     # Koefisien LPC menggunakan autocorrelation method (Levinson-Durbin)
     a = librosa.lpc(frame_win.astype(float), order=order)
@@ -116,7 +116,7 @@ def residual_feature_vector(
     1. Bagi sinyal menjadi frame (25ms / hop 10ms)
     2. Hitung residual LPC per frame
     3. Hitung 5 fitur per frame
-    4. Agregasi: mean, std, median → 15 fitur
+    4. Agregasi: mean, std, median -> 15 fitur
 
     Parameters
     ----------
@@ -159,7 +159,7 @@ def residual_feature_vector(
     arr = np.asarray(feats, dtype=float)
 
     if len(arr) == 0:
-        # Semua frame gagal → return NaN vector
+        # Semua frame gagal -> return NaN vector
         return np.full(15, np.nan, dtype=np.float32)
 
     return np.concatenate([

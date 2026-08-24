@@ -53,7 +53,7 @@ def bootstrap_auc_diff(
     score_b  : skor model B
     n_boot   : jumlah bootstrap iterasi
     seed     : random seed
-    alpha    : level signifikansi (default 0.05 → 95% CI)
+    alpha    : level signifikansi (default 0.05 -> 95% CI)
 
     Returns
     -------
@@ -167,7 +167,7 @@ def compare_models(
         out = pd.DataFrame(rows)
         Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
         out.to_csv(out_csv, index=False)
-        print(f"\n[bootstrap] Saved {len(out)} comparisons → {out_csv}")
+        print(f"\n[bootstrap] Saved {len(out)} comparisons -> {out_csv}")
         return out
 
     return pd.DataFrame()

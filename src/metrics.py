@@ -72,7 +72,7 @@ def compute_metrics(
     ----------
     y_true    : label ground truth (0/1)
     score     : skor deepfake (lebih besar = lebih deepfake)
-    threshold : threshold operasi (dari validation set). Bila None → gunakan threshold EER.
+    threshold : threshold operasi (dari validation set). Bila None -> gunakan threshold EER.
     split     : nama split untuk logging
     model_id  : nama model untuk logging
     seed      : seed yang digunakan
@@ -152,7 +152,7 @@ def save_metrics(metrics_list: list[dict], out_csv: str) -> None:
         df = df_new
 
     df.to_csv(str(out_path), index=False)
-    print(f"[metrics] Saved {len(df_new)} rows → {out_csv}")
+    print(f"[metrics] Saved {len(df_new)} rows -> {out_csv}")
 
 
 if __name__ == "__main__":

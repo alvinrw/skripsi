@@ -10,8 +10,8 @@ Cara pakai:
     python src/check_leakage.py [--manifest manifests/split_manifest.csv]
 
 Exit code:
-    0  → tidak ada leakage
-    1  → leakage terdeteksi
+    0  -> tidak ada leakage
+    1  -> leakage terdeteksi
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def check_leakage(manifest_csv: str = "manifests/split_manifest.csv") -> bool:
         print(f"[check_leakage] File tidak ditemukan: {manifest_csv}")
         return False
 
-    df = pd.read_csv(manifest_csv)
+    df = pd.read_csv(manifest_csv, sep=None, engine='python')
 
     # Hanya periksa split dev (train/validation/test), abaikan external
     dev_splits = {"train", "validation", "test"}
@@ -80,9 +80,9 @@ def check_leakage(manifest_csv: str = "manifests/split_manifest.csv") -> bool:
     print(spk_summary.to_string())
 
     if ok:
-        print("\n[check_leakage] ✓ All leakage checks PASSED. Safe to train.")
+        print("\n[check_leakage] [OK] All leakage checks PASSED. Safe to train.")
     else:
-        print("\n[check_leakage] ✗ LEAKAGE DETECTED. Fix split sebelum training!")
+        print("\n[check_leakage] [FAIL] LEAKAGE DETECTED. Fix split sebelum training!")
 
     return ok
 

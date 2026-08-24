@@ -4,16 +4,16 @@ src/train_baseline.py
 Pelatihan model baseline dan evidence-only pada fitur yang sudah diekstraksi.
 
 Eksperimen wajib (dari panduan):
-    B0: MFCC             + SVM RBF           → baseline utama
-    B1: LFCC             + SVM RBF           → representasi linear
-    B2: MFCC + LFCC      + SVM RBF           → fusi spektral
-    B3: MFCC + LFCC      + Random Forest     → non-linear pohon
-    B4: MFCC + LFCC      + XGBoost           → boosting
-    B5: MFCC + LFCC      + KNN/MLP           → target tambahan
+    B0: MFCC             + SVM RBF           -> baseline utama
+    B1: LFCC             + SVM RBF           -> representasi linear
+    B2: MFCC + LFCC      + SVM RBF           -> fusi spektral
+    B3: MFCC + LFCC      + Random Forest     -> non-linear pohon
+    B4: MFCC + LFCC      + XGBoost           -> boosting
+    B5: MFCC + LFCC      + KNN/MLP           -> target tambahan
 
-    E4a: Residual-only   + SVM/RF/XGBoost    → ablation domain
-    E4b: Modulation-only + SVM/RF/XGBoost    → ablation domain
-    E4c: Residual+Mod    + SVM/RF/XGBoost    → evidence-only model
+    E4a: Residual-only   + SVM/RF/XGBoost    -> ablation domain
+    E4b: Modulation-only + SVM/RF/XGBoost    -> ablation domain
+    E4c: Residual+Mod    + SVM/RF/XGBoost    -> evidence-only model
 
 ATURAN:
     - Scaler HANYA difit pada training set
@@ -79,7 +79,7 @@ def get_feature_groups(df: pd.DataFrame, lpc_order: int = 16) -> dict[str, list[
 
 def make_pipeline(model_type: str, cfg: dict, seed: int) -> Pipeline:
     """
-    Buat sklearn Pipeline: Imputer → Scaler → Classifier.
+    Buat sklearn Pipeline: Imputer -> Scaler -> Classifier.
 
     model_type: 'svm_rbf' | 'rf' | 'xgb' | 'knn' | 'mlp'
     """
@@ -140,6 +140,7 @@ def run_experiment(
     out_scores: str = "results/utterance_scores.csv",
     out_checkpoints: str = "checkpoints",
     out_metrics: str = "results/metrics.csv",
+    duration: str = None,
 ) -> dict:
     """
     Latih satu model, evaluasi pada val dan test, simpan ke disk.
@@ -219,9 +220,10 @@ def run_experiment(
         "val_threshold": val_threshold,
         "experiment_id": experiment_id,
     }
-    ckpt_path = ckpt_dir / f"{experiment_id}_seed{seed}.joblib"
+    dur_str = f"_{duration}" if duration else ""
+    ckpt_path = ckpt_dir / f"{experiment_id}{dur_str}_seed{seed}.joblib"
     joblib.dump(ckpt, str(ckpt_path))
-    print(f"  Saved model → {ckpt_path}")
+    print(f"  Saved model -> {ckpt_path}")
 
     return m_val
 
@@ -235,23 +237,25 @@ def train_all(
     config_path: str = "configs/baseline.yaml",
     lpc_order: int = 16,
     smoke_test: bool = False,
+    duration: str = None,
 ) -> None:
     cfg = load_config(config_path)
 
     suffix = f"_p{lpc_order}" if lpc_order != 16 else ""
 
+    dur_suffix = f"_{duration}" if duration else ""
     # Load fitur
-    train_csv = Path(results_dir) / f"features{suffix}_train.csv"
-    val_csv   = Path(results_dir) / f"features{suffix}_validation.csv"
-    test_csv  = Path(results_dir) / f"features{suffix}_test.csv"
+    train_csv = Path(results_dir) / f"features{suffix}{dur_suffix}_train.csv"
+    val_csv   = Path(results_dir) / f"features{suffix}{dur_suffix}_validation.csv"
+    test_csv  = Path(results_dir) / f"features{suffix}{dur_suffix}_test.csv"
 
     for p in [train_csv, val_csv, test_csv]:
         if not p.exists():
             raise FileNotFoundError(f"Feature CSV tidak ditemukan: {p}. Jalankan extract_features.py lebih dulu.")
 
-    df_train = pd.read_csv(str(train_csv))
-    df_val   = pd.read_csv(str(val_csv))
-    df_test  = pd.read_csv(str(test_csv))
+    df_train = pd.read_csv(train_csv, sep=None, engine='python')
+    df_val   = pd.read_csv(val_csv, sep=None, engine='python')
+    df_test  = pd.read_csv(test_csv, sep=None, engine='python')
 
     if smoke_test:
         df_train = df_train.head(50).copy()
@@ -293,9 +297,10 @@ def train_all(
                 feature_cols    = feat_cols,
                 cfg             = cfg,
                 seed            = seed,
-                out_scores      = f"{results_dir}/utterance_scores{suffix}.csv",
+                duration        = duration,
+                out_scores      = f"{results_dir}/utterance_scores{suffix}{dur_suffix}.csv",
                 out_checkpoints = "checkpoints",
-                out_metrics     = f"{results_dir}/metrics{suffix}.csv",
+                out_metrics     = f"{results_dir}/metrics{suffix}{dur_suffix}.csv",
             )
             all_metrics.append(m)
 

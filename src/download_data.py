@@ -9,7 +9,7 @@ PRASYARAT:
        pip install kaggle
 
     2. Dapatkan API key dari https://www.kaggle.com/settings
-       → Account → API → Create New Token → unduh kaggle.json
+       -> Account -> API -> Create New Token -> unduh kaggle.json
 
     3. Taruh kaggle.json di:
        Windows : C:\\Users\\<nama_anda>\\.kaggle\\kaggle.json
@@ -55,7 +55,7 @@ def check_kaggle_credentials() -> bool:
 Langkah setup:
   1. Buka https://www.kaggle.com/settings
   2. Scroll ke bagian 'API'
-  3. Klik 'Create New Token' → file kaggle.json akan diunduh
+  3. Klik 'Create New Token' -> file kaggle.json akan diunduh
   4. Pindahkan file kaggle.json ke:
        Windows: C:\\Users\\{os.environ.get('USERNAME', '<nama_anda>')}\\.kaggle\\kaggle.json
   5. Jalankan script ini lagi
@@ -91,7 +91,7 @@ def download_kaggle(dest_dir: Path) -> Path:
         f'kaggle datasets download -d {KAGGLE_DATASET} -p "{dest_dir}" --unzip'
     )
 
-    print(f"[download] Download selesai → {dest_dir}")
+    print(f"[download] Download selesai -> {dest_dir}")
     return dest_dir
 
 
