@@ -99,8 +99,41 @@ def process_dataset(drive_dir, out_dir, zip_out=None):
         print("[FAIL] Tidak ada file audio yang valid.")
         sys.exit(1)
         
-    print("\n>> Tahap 2: Pemotongan Audio (Chunking) & Pengacakan (Split)...")
-    print("  (Memotong audio dan membagi berdasarkan chunk secara acak untuk meratakan data)")
+    print("\n>> Tahap 2: Pembagian Dataset (70% Train, 15% Test, 15% Validation)...")
+    unique_speakers = df_valid["speaker_id"].nunique()
+    print(f"  Jumlah pembicara unik terdeteksi: {unique_speakers}")
+    
+    if unique_speakers >= 5:
+        # GroupSplit
+        gss1 = GroupShuffleSplit(n_splits=1, test_size=0.3, random_state=2026)
+        train_idx, temp_idx = next(gss1.split(df_valid, groups=df_valid["speaker_id"]))
+        df_train = df_valid.iloc[train_idx]
+        df_temp = df_valid.iloc[temp_idx]
+        
+        gss2 = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=2026)
+        val_idx, test_idx = next(gss2.split(df_temp, groups=df_temp["speaker_id"]))
+        df_val = df_temp.iloc[val_idx]
+        df_test = df_temp.iloc[test_idx]
+    else:
+        print("  [WARNING] Pembicara terlalu sedikit. Fallback ke stratified random split.")
+        test_size_n = int(len(df_valid) * 0.15)
+        if test_size_n < 2:
+            test_size_n = 2  # At least 2 for stratification
+        
+        # If dataset is really small (like the dummy one), avoid stratify failing
+        try:
+            df_train, df_temp = train_test_split(df_valid, test_size=test_size_n*2, stratify=df_valid["label"], random_state=2026)
+            df_val, df_test = train_test_split(df_temp, test_size=0.5, stratify=df_temp["label"], random_state=2026)
+        except ValueError:
+            # Fallback again if stratify fails
+            df_train, df_temp = train_test_split(df_valid, test_size=0.3, random_state=2026)
+            df_val, df_test = train_test_split(df_temp, test_size=0.5, random_state=2026)
+            
+    df_valid.loc[df_train.index, "split"] = "train"
+    df_valid.loc[df_val.index, "split"] = "validation"
+    df_valid.loc[df_test.index, "split"] = "test"
+    
+    print("\n>> Tahap 3: Pemotongan Audio (Chunking)...")
     durations = [2, 3, 5, 7]
     sr = 16000
     
@@ -133,24 +166,10 @@ def process_dataset(drive_dir, out_dir, zip_out=None):
                     "label": row["label"],
                     "label_idx": row["label_idx"],
                     "speaker_id": row["speaker_id"],
-                    "split": "unassigned"
+                    "split": row["split"]
                 })
                 
         manifest_df = pd.DataFrame(manifest_rows)
-        
-        # Split chunk-level (Randomized)
-        if not manifest_df.empty:
-            try:
-                train_df, temp_df = train_test_split(manifest_df, test_size=0.3, stratify=manifest_df["label"], random_state=2026)
-                val_df, test_df = train_test_split(temp_df, test_size=0.5, stratify=temp_df["label"], random_state=2026)
-            except ValueError:
-                train_df, temp_df = train_test_split(manifest_df, test_size=0.3, random_state=2026)
-                val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=2026)
-                
-            manifest_df.loc[train_df.index, "split"] = "train"
-            manifest_df.loc[val_df.index, "split"] = "validation"
-            manifest_df.loc[test_df.index, "split"] = "test"
-            
         manifest_csv = manifests_dir / f"split_manifest_{dur}s.csv"
         if not manifest_df.empty:
             manifest_df.to_csv(manifest_csv, index=False)
