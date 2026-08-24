@@ -175,6 +175,11 @@ def process_dataset(drive_dir, out_dir, zip_out=None):
             manifest_df.to_csv(manifest_csv, index=False)
             print(f"    Manifest untuk durasi {dur}s disimpan ke: {manifest_csv}")
             
+            total_dur_chunks = len(manifest_df)
+            real_dur_chunks = len(manifest_df[manifest_df["label"] == "real"])
+            fake_dur_chunks = len(manifest_df[manifest_df["label"] == "fake"])
+            print(f"    -> Hasil potongan {dur}s: {total_dur_chunks} data ({real_dur_chunks} suara asli, {fake_dur_chunks} deepfake)")
+            
             # Record recap
             for split in ["train", "validation", "test"]:
                 subset = manifest_df[manifest_df["split"] == split]
