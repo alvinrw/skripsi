@@ -61,8 +61,9 @@ def process_dataset(drive_dir, out_dir, zip_out=None):
     manifests_dir.mkdir(parents=True, exist_ok=True)
     results_dir.mkdir(parents=True, exist_ok=True)
     
-    real_files = glob.glob(str(drive_path / "Suara_real" / "**" / "*.wav"), recursive=True)
-    fake_files = glob.glob(str(drive_path / "output_generate" / "**" / "*.wav"), recursive=True)
+    audio_exts = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
+    real_files = [str(p) for p in (drive_path / "Suara_real").rglob("*") if p.is_file() and p.suffix.lower() in audio_exts]
+    fake_files = [str(p) for p in (drive_path / "output_generate").rglob("*") if p.is_file() and p.suffix.lower() in audio_exts]
     
     print(f"[scan] Ditemukan {len(real_files)} file real dan {len(fake_files)} file fake.")
     
