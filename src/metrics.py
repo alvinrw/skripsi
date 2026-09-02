@@ -25,8 +25,10 @@ import pandas as pd
 from sklearn.metrics import (
     roc_curve, roc_auc_score,
     precision_recall_fscore_support,
-    accuracy_score,
+    accuracy_score, confusion_matrix
 )
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 # ──────────────────────────────────────────────
@@ -153,6 +155,27 @@ def save_metrics(metrics_list: list[dict], out_csv: str) -> None:
 
     df.to_csv(str(out_path), index=False)
     print(f"[metrics] Saved {len(df_new)} rows -> {out_csv}")
+
+
+def save_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, out_path: str, model_name: str) -> None:
+    """Simpan gambar confusion matrix."""
+    from pathlib import Path
+    import os
+    
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(6,5))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                xticklabels=['Real (0)', 'Fake (1)'], 
+                yticklabels=['Real (0)', 'Fake (1)'])
+    plt.title(f'Confusion Matrix: {model_name}')
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.tight_layout()
+    
+    out_file = Path(out_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(str(out_file))
+    plt.close()
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ from xgboost import XGBClassifier
 sys.path.insert(0, str(Path(__file__).parent))
 
 from reproducibility import load_config, set_seed
-from metrics import compute_metrics, compute_eer, print_metrics, save_metrics
+from metrics import compute_metrics, compute_eer, print_metrics, save_metrics, save_confusion_matrix
 
 
 # ──────────────────────────────────────────────
@@ -304,7 +304,41 @@ def train_all(
             )
             all_metrics.append(m)
 
-    print("\n[train_baseline] All experiments completed.")
+    print("\n[train_baseline] All experiments completed. Generating detailed test report & Confusion Matrices...")
+    metrics_csv = f"{results_dir}/metrics{suffix}{dur_suffix}.csv"
+    scores_csv = f"{results_dir}/utterance_scores{suffix}{dur_suffix}.csv"
+    manifest_csv = f"manifests/split_manifest{dur_suffix}.csv"
+    
+    if Path(metrics_csv).exists() and Path(scores_csv).exists():
+        metrics_df = pd.read_csv(metrics_csv)
+        test_metrics = metrics_df[metrics_df['split'] == 'test']
+        scores_df = pd.read_csv(scores_csv)
+        test_scores = scores_df[scores_df['split'] == 'test'].copy()
+        
+        if Path(manifest_csv).exists():
+            manifest_df = pd.read_csv(manifest_csv)
+            # manifest mungkin punya 'label' dan 'speaker_id' juga, hindari duplikat
+            test_scores = test_scores.merge(manifest_df[['utterance_id', 'file_path']], on='utterance_id', how='left')
+            
+        for exp_id, fg, mt in experiments:
+            score_col = f"score_{exp_id}"
+            if score_col in test_scores.columns:
+                try:
+                    thr = test_metrics[test_metrics['model'] == exp_id]['used_threshold'].iloc[-1]
+                    pred_col = f"pred_{exp_id}"
+                    correct_col = f"correct_{exp_id}"
+                    test_scores[pred_col] = (test_scores[score_col] >= thr).astype(int)
+                    test_scores[correct_col] = (test_scores[pred_col] == test_scores["label"])
+                    
+                    cm_out = f"{results_dir}/confusion_matrices/CM_{exp_id}{suffix}{dur_suffix}.png"
+                    save_confusion_matrix(test_scores["label"], test_scores[pred_col], cm_out, exp_id)
+                except Exception as e:
+                    print(f"Failed to generate detailed stats for {exp_id}: {e}")
+                    
+        detailed_out = f"{results_dir}/detailed_test_results{suffix}{dur_suffix}.csv"
+        test_scores.to_csv(detailed_out, index=False)
+        print(f"[train_baseline] Saved detailed test results to {detailed_out}")
+
 
 
 if __name__ == "__main__":
