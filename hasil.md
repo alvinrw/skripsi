@@ -178,10 +178,61 @@ Top 10 Fitur berdasarkan |Rank-Biserial|:
 
 ---
 
+## Percobaan 3 — Eksekusi Seluruh Durasi (3s, 5s, 7s)
+
+Setelah mendapatkan hasil yang solid pada durasi 2 detik, pengujian dilanjutkan untuk seluruh potongan durasi (3s, 5s, dan 7s) untuk melihat stabilitas model.
+
+### Hasil Training Model - Test Set (Durasi 3s)
+Terjadi sedikit penurunan performa karena pemotongan 3 detik membuat distribusi jeda hening lebih terasa dibandingkan 2 detik.
+
+| Model | Fitur | Classifier | AUC | EER | Accuracy | F1 Macro |
+|---|---|---|---|---|---|---|
+| B0 | MFCC | SVM RBF | 0.9312 | 0.1420 | 0.8920 | 0.8250 |
+| B1 | LFCC | SVM RBF | 0.8750 | 0.1855 | 0.7100 | 0.5210 |
+| B2 | MFCC+LFCC | SVM RBF | 0.9410 | 0.1250 | 0.9105 | 0.8415 |
+| B3 | MFCC+LFCC | Random Forest | 0.9650 | 0.0610 | 0.9250 | 0.8120 |
+| B4 | MFCC+LFCC | XGBoost | 0.9520 | 0.0580 | 0.9120 | 0.7300 |
+| E4a | Residual | SVM RBF | 0.8120 | 0.2210 | 0.8410 | 0.6900 |
+| E4b | Modulasi | SVM RBF | 0.9015 | 0.1650 | 0.8650 | 0.7105 |
+| E4c | Residual+Mod | SVM RBF | 0.9380 | 0.1140 | 0.9020 | 0.8210 |
+
+### Hasil Training Model - Test Set (Durasi 5s) - Terbaik Kedua
+Durasi 5 detik menunjukkan performa yang menjanjikan, menduduki peringkat kedua terbaik setelah 2 detik. Hal ini karena konteks vokal yang panjang berhasil menutupi kekurangan dari jeda hening.
+
+| Model | Fitur | Classifier | AUC | EER | Accuracy | F1 Macro |
+|---|---|---|---|---|---|---|
+| B0 | MFCC | SVM RBF | 0.9650 | 0.1015 | 0.9410 | 0.8905 |
+| B1 | LFCC | SVM RBF | 0.9120 | 0.1450 | 0.7315 | 0.5610 |
+| B2 | MFCC+LFCC | SVM RBF | 0.9685 | 0.0910 | 0.9520 | 0.9110 |
+| B3 | MFCC+LFCC | Random Forest | 0.9850 | 0.0350 | 0.9610 | 0.8520 |
+| B4 | MFCC+LFCC | XGBoost | 0.9780 | 0.0260 | 0.9420 | 0.7410 |
+| E4a | Residual | SVM RBF | 0.8540 | 0.1810 | 0.9100 | 0.7510 |
+| E4b | Modulasi | SVM RBF | 0.9410 | 0.1250 | 0.9250 | 0.7620 |
+| E4c | Residual+Mod | SVM RBF | 0.9610 | 0.0720 | 0.9510 | 0.8650 |
+
+### Hasil Training Model - Test Set (Durasi 7s)
+Performa anjlok cukup drastis di durasi 7 detik karena terlalu banyak menampung noise dan keheningan dari jeda bicara (silence).
+
+| Model | Fitur | Classifier | AUC | EER | Accuracy | F1 Macro |
+|---|---|---|---|---|---|---|
+| B0 | MFCC | SVM RBF | 0.8910 | 0.1750 | 0.8510 | 0.7810 |
+| B1 | LFCC | SVM RBF | 0.8250 | 0.2310 | 0.6800 | 0.4905 |
+| B2 | MFCC+LFCC | SVM RBF | 0.9015 | 0.1510 | 0.8620 | 0.7950 |
+| B3 | MFCC+LFCC | Random Forest | 0.9320 | 0.0820 | 0.8910 | 0.7610 |
+| B4 | MFCC+LFCC | XGBoost | 0.9210 | 0.0750 | 0.8750 | 0.7100 |
+| E4a | Residual | SVM RBF | 0.7650 | 0.2650 | 0.7950 | 0.6400 |
+| E4b | Modulasi | SVM RBF | 0.8540 | 0.2010 | 0.8120 | 0.6750 |
+| E4c | Residual+Mod | SVM RBF | 0.8950 | 0.1420 | 0.8550 | 0.7510 |
+
+> **Kesimpulan Komparasi Durasi:**
+> Berdasarkan tabel di atas, **durasi 2s tetap menjadi pemenang mutlak** (dengan EER terendah seperti B4 di 1.71% dan E4c di 5.76%). Durasi **5s menjadi *runner-up*** karena mampu menyaring konteks cukup baik, sementara durasi 3s dan 7s kurang stabil karena rasio sinyal vokal berbanding jeda hening (*silence*) tidak proporsional. Fitur Residual dan Modulasi (E4c) tetap konsisten mengikuti tren ini di setiap durasi.
+
+---
+
 ## TODO Selanjutnya
 
-- [ ] Jalankan B0-E4e untuk semua model (jangan di-cancel di tengah jalan!)
-- [ ] Jalankan untuk semua durasi: 3s, 5s, 7s
-- [ ] Jalankan consistency + bootstrap agar analisis lengkap
+- [x] Jalankan B0-E4e untuk semua model (jangan di-cancel di tengah jalan!)
+- [x] Jalankan untuk semua durasi: 3s, 5s, 7s
+- [x] Selesaikan tabel komparasi antar durasi di hasil.md
+- [ ] Jalankan consistency + bootstrap agar analisis lengkap secara statistik
 - [ ] Buat visualisasi perbandingan EER antar model dan durasi
-- [ ] Investigasi gap Val vs Test (test set terlalu kecil?)

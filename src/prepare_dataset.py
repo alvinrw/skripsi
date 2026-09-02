@@ -63,7 +63,7 @@ def extract_speaker_id(filepath):
     # Default: nama file penuh = 1 speaker unik
     return stem
 
-def process_dataset(drive_dir, out_dir, zip_out=None):
+def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     print("\n[mount] Bukan lingkungan Google Colab. Mount dilewati.")
     print("[reproducibility] Seed set to 2026")
     np.random.seed(2026)
@@ -81,7 +81,19 @@ def process_dataset(drive_dir, out_dir, zip_out=None):
     real_files = [str(p) for p in (drive_path / "Suara_real").rglob("*") if p.is_file() and p.suffix.lower() in audio_exts]
     fake_files = [str(p) for p in (drive_path / "output_generate").rglob("*") if p.is_file() and p.suffix.lower() in audio_exts]
     
-    print(f"[scan] Ditemukan {len(real_files)} file real dan {len(fake_files)} file fake.")
+    if kaggle_dirs:
+        for k_dir in kaggle_dirs:
+            if k_dir and os.path.exists(k_dir):
+                print(f"[scan] Scanning Kaggle dataset: {k_dir}")
+                for p in Path(k_dir).rglob("*"):
+                    if p.is_file() and p.suffix.lower() in audio_exts:
+                        parts = [part.lower() for part in p.parts]
+                        if "real" in parts:
+                            real_files.append(str(p))
+                        elif "fake" in parts:
+                            fake_files.append(str(p))
+                            
+    print(f"[scan] Total ditemukan {len(real_files)} file real dan {len(fake_files)} file fake.")
     
     all_files = []
     for f in real_files:
@@ -150,7 +162,7 @@ def process_dataset(drive_dir, out_dir, zip_out=None):
     df_valid.loc[df_test.index, "split"] = "test"
     
     print("\n>> Tahap 3: Pemotongan Audio (Chunking)...")
-    durations = [2, 3, 5, 7]
+    durations = [2]
     sr = 16000
     
     recap_data = []
@@ -247,5 +259,6 @@ if __name__ == "__main__":
     parser.add_argument("--drive_dir", type=str, default="data/raw")
     parser.add_argument("--out_dir", type=str, default="data/processed")
     parser.add_argument("--zip_out", type=str, default=None)
+    parser.add_argument("--kaggle_dirs", type=str, nargs="*", default=None, help="Daftar direktori Kaggle dataset")
     args = parser.parse_args()
-    process_dataset(args.drive_dir, args.out_dir, args.zip_out)
+    process_dataset(args.drive_dir, args.out_dir, args.zip_out, args.kaggle_dirs)

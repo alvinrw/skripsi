@@ -141,6 +141,8 @@ def step_prepare(cfg: dict, args: argparse.Namespace) -> bool:
     cmd = [sys.executable, "src/prepare_dataset.py", "--drive_dir", getattr(args, "drive_dir", "data/raw"), "--out_dir", getattr(args, "out_dir", "data/processed")]
     if getattr(args, "zip_out", None):
         cmd += ["--zip_out", args.zip_out]
+    if getattr(args, "kaggle_dirs", None):
+        cmd += ["--kaggle_dirs"] + args.kaggle_dirs
     res = run(cmd)
     return res.returncode == 0
 
@@ -323,6 +325,8 @@ def main():
                         help="Path ke output chunking (digunakan oleh step prepare)")
     parser.add_argument("--zip_out", type=str, default=None,
                         help="Path zip output opsional (digunakan oleh step prepare)")
+    parser.add_argument("--kaggle_dirs", type=str, nargs="*", default=None,
+                        help="Daftar direktori Kaggle dataset (digunakan oleh step prepare)")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
