@@ -280,8 +280,26 @@ def step_bootstrap(cfg: dict, args: argparse.Namespace) -> bool:
         return False
 
 
+
+def step_evaluate(cfg: dict, args) -> bool:
+    import traceback
+    from evaluate_results import generate_report
+    dur_suffix = f"_{args.duration}" if getattr(args, "duration", None) else ""
+    try:
+        generate_report(
+            scores_csv=f"results/utterance_scores{dur_suffix}.csv",
+            manifest_csv="manifests/split_manifest.csv",
+            out_dir="results"
+        )
+        return True
+    except Exception as e:
+        print(f"[Step 9] ERROR: {e}")
+        traceback.print_exc()
+        return False
+
 # ──────────────────────────────────────────────
 # Main
+
 # ──────────────────────────────────────────────
 
 STEP_MAP = {
@@ -295,10 +313,11 @@ STEP_MAP = {
     "stats":      step_stats,
     "consistency": step_consistency,
     "bootstrap":  step_bootstrap,
+    "evaluate":   step_evaluate,
 }
 
 ALL_STEPS = ["smoke", "prepare", "manifest", "splits", "leakage",
-             "features", "train", "stats", "consistency", "bootstrap"]
+             "features", "train", "stats", "consistency", "bootstrap", "evaluate"]
 
 
 def main():

@@ -45,7 +45,10 @@ from xgboost import XGBClassifier
 sys.path.insert(0, str(Path(__file__).parent))
 
 from reproducibility import load_config, set_seed
-from metrics import compute_metrics, compute_eer, print_metrics, save_metrics, save_confusion_matrix
+from metrics import (
+    compute_metrics, compute_eer, print_metrics, save_metrics, 
+    save_confusion_matrix, save_prediction_mapping, compute_per_generator_metrics
+)
 
 
 # ──────────────────────────────────────────────
@@ -141,11 +144,10 @@ def run_experiment(
     out_checkpoints: str = "checkpoints",
     out_metrics: str = "results/metrics.csv",
     duration: str = None,
+    df_sep_test: pd.DataFrame | None = None,
 ) -> dict:
     """
-    Latih satu model, evaluasi pada val dan test, simpan ke disk.
-
-    Returns metrik validation sebagai dict.
+    Latih satu model, evaluasi pada val, test, dan separate test, simpan ke disk.
     """
     print(f"\n[train] Experiment {experiment_id}: features={feature_group}, model={model_type}, seed={seed}")
 
@@ -153,8 +155,11 @@ def run_experiment(
         print(f"  [SKIP] Tidak ada fitur untuk grup '{feature_group}'")
         return {}
 
-    X_train = df_train[feature_cols].values
-    y_train = df_train["label"].values
+    # Shuffle training features explicitly
+    df_train_shuffled = df_train.sample(frac=1.0, random_state=seed).reset_index(drop=True)
+
+    X_train = df_train_shuffled[feature_cols].values
+    y_train = df_train_shuffled["label"].values
     X_val   = df_val[feature_cols].values
     y_val   = df_val["label"].values
     X_test  = df_test[feature_cols].values
@@ -171,7 +176,7 @@ def run_experiment(
     # Threshold dari validation set SAJA
     _, val_threshold = compute_eer(y_val, score_val)
 
-    # Metrik
+    # Metrik Validation & Test
     m_val  = compute_metrics(y_val,  score_val,  threshold=val_threshold,
                               split="validation", model_id=experiment_id, seed=seed)
     m_test = compute_metrics(y_test, score_test, threshold=val_threshold,
@@ -180,33 +185,36 @@ def run_experiment(
     print_metrics(m_val)
     print_metrics(m_test)
 
-    # Simpan metrik
-    save_metrics([m_val, m_test], out_metrics)
+    eval_metrics_to_save = [m_val, m_test]
 
-    # Simpan skor per utterance (untuk konsistensi analysis)
-    score_col = f"score_{experiment_id}"
-    rows_val  = df_val[["utterance_id", "speaker_id", "label"]].copy()
-    rows_val[score_col] = score_val
-    rows_val["split"]   = "validation"
+    # Evaluate Separate Blind Test Set if present
+    if df_sep_test is not None and not df_sep_test.empty:
+        X_sep = df_sep_test[feature_cols].values
+        y_sep = df_sep_test["label"].values
+        score_sep = pipeline.predict_proba(X_sep)[:, 1]
+        
+        m_sep = compute_metrics(y_sep, score_sep, threshold=val_threshold,
+                                split="separate_test", model_id=experiment_id, seed=seed)
+        print_metrics(m_sep)
+        eval_metrics_to_save.append(m_sep)
 
-    rows_test = df_test[["utterance_id", "speaker_id", "label"]].copy()
-    rows_test[score_col] = score_test
-    rows_test["split"]   = "test"
+        dur_str = f"_{duration}" if duration else ""
+        y_pred_sep = (score_sep >= val_threshold).astype(int)
+        
+        # Save Separate Test Prediction Mapping CSV
+        sep_map_path = f"results/prediction_mapping_{experiment_id}{dur_str}_separate_test.csv"
+        df_sep_mapping = save_prediction_mapping(df_sep_test, y_sep, y_pred_sep, score_sep, sep_map_path)
+        
+        # Save Per-Generator Breakdown CSV
+        sep_gen_path = f"results/per_generator_metrics_{experiment_id}{dur_str}_separate_test.csv"
+        compute_per_generator_metrics(df_sep_mapping, sep_gen_path)
+        
+        # Save Separate Test Confusion Matrix
+        cm_sep_path = f"results/confusion_matrices/CM_{experiment_id}{dur_str}_separate_test.png"
+        save_confusion_matrix(y_sep, y_pred_sep, cm_sep_path, f"{experiment_id} (Separate Test)")
 
-    scores_df = pd.concat([rows_val, rows_test], ignore_index=True)
-
-    out_scores_path = Path(out_scores)
-    out_scores_path.parent.mkdir(parents=True, exist_ok=True)
-    if out_scores_path.exists():
-        existing = pd.read_csv(str(out_scores_path))
-        if score_col not in existing.columns:
-            scores_df_merge = existing.merge(
-                scores_df[["utterance_id", "split", score_col]],
-                on=["utterance_id", "split"], how="left"
-            )
-            scores_df_merge.to_csv(str(out_scores_path), index=False)
-    else:
-        scores_df.to_csv(str(out_scores_path), index=False)
+    # Save metrics
+    save_metrics(eval_metrics_to_save, out_metrics)
 
     # Simpan model ke checkpoints
     ckpt_dir = Path(out_checkpoints)
@@ -242,12 +250,13 @@ def train_all(
     cfg = load_config(config_path)
 
     suffix = f"_p{lpc_order}" if lpc_order != 16 else ""
-
     dur_suffix = f"_{duration}" if duration else ""
+
     # Load fitur
     train_csv = Path(results_dir) / f"features{suffix}{dur_suffix}_train.csv"
     val_csv   = Path(results_dir) / f"features{suffix}{dur_suffix}_validation.csv"
     test_csv  = Path(results_dir) / f"features{suffix}{dur_suffix}_test.csv"
+    sep_test_csv = Path(results_dir) / f"features{suffix}{dur_suffix}_separate_test.csv"
 
     for p in [train_csv, val_csv, test_csv]:
         if not p.exists():
@@ -256,25 +265,29 @@ def train_all(
     df_train = pd.read_csv(train_csv, sep=None, engine='python')
     df_val   = pd.read_csv(val_csv, sep=None, engine='python')
     df_test  = pd.read_csv(test_csv, sep=None, engine='python')
+    
+    df_sep_test = None
+    if sep_test_csv.exists():
+        print(f"[train] Found separate test features: {sep_test_csv}")
+        df_sep_test = pd.read_csv(sep_test_csv, sep=None, engine='python')
 
     if smoke_test:
         df_train = df_train.head(50).copy()
         df_val   = df_val.head(20).copy()
         df_test  = df_test.head(20).copy()
+        if df_sep_test is not None:
+            df_sep_test = df_sep_test.head(20).copy()
         print("[train] Smoke test mode")
 
     seeds = cfg["seeds"]
     feat_groups = get_feature_groups(df_train, lpc_order=lpc_order)
 
-    # Daftar eksperimen wajib (panduan Tabel Baseline)
     experiments = [
-        # (id, feature_group, model_type)
         ("B0", "mfcc",      "svm_rbf"),
         ("B1", "lfcc",      "svm_rbf"),
         ("B2", "mfcc_lfcc", "svm_rbf"),
         ("B3", "mfcc_lfcc", "rf"),
         ("B4", "mfcc_lfcc", "xgb"),
-        # Evidence-only (ablation E4)
         ("E4a", "residual",   "svm_rbf"),
         ("E4b", "modulation", "svm_rbf"),
         ("E4c", "evidence",   "svm_rbf"),
@@ -301,43 +314,45 @@ def train_all(
                 out_scores      = f"{results_dir}/utterance_scores{suffix}{dur_suffix}.csv",
                 out_checkpoints = "checkpoints",
                 out_metrics     = f"{results_dir}/metrics{suffix}{dur_suffix}.csv",
+                df_sep_test     = df_sep_test,
             )
             all_metrics.append(m)
 
     print("\n[train_baseline] All experiments completed. Generating detailed test report & Confusion Matrices...")
     metrics_csv = f"{results_dir}/metrics{suffix}{dur_suffix}.csv"
-    scores_csv = f"{results_dir}/utterance_scores{suffix}{dur_suffix}.csv"
     manifest_csv = f"manifests/split_manifest{dur_suffix}.csv"
     
-    if Path(metrics_csv).exists() and Path(scores_csv).exists():
+    if Path(metrics_csv).exists() and Path(manifest_csv).exists():
         metrics_df = pd.read_csv(metrics_csv)
         test_metrics = metrics_df[metrics_df['split'] == 'test']
-        scores_df = pd.read_csv(scores_csv)
-        test_scores = scores_df[scores_df['split'] == 'test'].copy()
+        manifest_df = pd.read_csv(manifest_csv)
+        test_manifest = manifest_df[manifest_df['split'] == 'test'].copy()
         
-        if Path(manifest_csv).exists():
-            manifest_df = pd.read_csv(manifest_csv)
-            # manifest mungkin punya 'label' dan 'speaker_id' juga, hindari duplikat
-            test_scores = test_scores.merge(manifest_df[['utterance_id', 'file_path']], on='utterance_id', how='left')
-            
+        feat_test = df_test.copy()
         for exp_id, fg, mt in experiments:
-            score_col = f"score_{exp_id}"
-            if score_col in test_scores.columns:
-                try:
-                    thr = test_metrics[test_metrics['model'] == exp_id]['used_threshold'].iloc[-1]
-                    pred_col = f"pred_{exp_id}"
-                    correct_col = f"correct_{exp_id}"
-                    test_scores[pred_col] = (test_scores[score_col] >= thr).astype(int)
-                    test_scores[correct_col] = (test_scores[pred_col] == test_scores["label"])
+            feat_cols = feat_groups.get(fg, [])
+            if not feat_cols:
+                continue
+            try:
+                ckpt_file = f"checkpoints/{exp_id}{dur_suffix}_seed2026.joblib"
+                if Path(ckpt_file).exists():
+                    ckpt = joblib.load(ckpt_file)
+                    pipeline = ckpt["model"]
+                    val_thr = ckpt["val_threshold"]
                     
-                    cm_out = f"{results_dir}/confusion_matrices/CM_{exp_id}{suffix}{dur_suffix}.png"
-                    save_confusion_matrix(test_scores["label"], test_scores[pred_col], cm_out, exp_id)
-                except Exception as e:
-                    print(f"Failed to generate detailed stats for {exp_id}: {e}")
+                    scores = pipeline.predict_proba(feat_test[feat_cols].values)[:, 1]
+                    preds = (scores >= val_thr).astype(int)
                     
-        detailed_out = f"{results_dir}/detailed_test_results{suffix}{dur_suffix}.csv"
-        test_scores.to_csv(detailed_out, index=False)
-        print(f"[train_baseline] Saved detailed test results to {detailed_out}")
+                    # Save In-Domain Test Prediction Mapping
+                    map_out = f"{results_dir}/prediction_mapping_{exp_id}{dur_suffix}_indomain_test.csv"
+                    save_prediction_mapping(df_test, df_test["label"].values, preds, scores, map_out)
+                    
+                    # Save In-Domain Confusion Matrix (PNG & CSV)
+                    cm_out = f"{results_dir}/confusion_matrices/CM_{exp_id}{suffix}{dur_suffix}_indomain.png"
+                    save_confusion_matrix(df_test["label"].values, preds, cm_out, exp_id)
+            except Exception as e:
+                print(f"Failed to generate detailed stats for {exp_id}: {e}")
+
 
 
 

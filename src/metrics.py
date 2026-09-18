@@ -158,12 +158,11 @@ def save_metrics(metrics_list: list[dict], out_csv: str) -> None:
 
 
 def save_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, out_path: str, model_name: str) -> None:
-    """Simpan gambar confusion matrix."""
+    """Simpan gambar confusion matrix (PNG) dan tabel matriks (CSV)."""
     from pathlib import Path
-    import os
     
-    cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(6,5))
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+    plt.figure(figsize=(6, 5))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=['Real (0)', 'Fake (1)'], 
                 yticklabels=['Real (0)', 'Fake (1)'])
@@ -174,8 +173,101 @@ def save_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, out_path: str,
     
     out_file = Path(out_path)
     out_file.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(str(out_file))
+    
+    # Save PNG image
+    png_path = str(out_file) if str(out_file).endswith(".png") else f"{out_file}.png"
+    plt.savefig(png_path)
     plt.close()
+    
+    # Save CSV table
+    csv_path = png_path.replace(".png", ".csv")
+    cm_df = pd.DataFrame(cm, index=['True_Real', 'True_Fake'], columns=['Pred_Real', 'Pred_Fake'])
+    cm_df.to_csv(csv_path)
+    print(f"[metrics] Confusion Matrix saved -> PNG: {png_path} | CSV: {csv_path}")
+
+
+def save_prediction_mapping(
+    df_meta: pd.DataFrame,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    y_score: np.ndarray,
+    out_csv_path: str,
+) -> pd.DataFrame:
+    """
+    Buat dan simpan CSV Mapping hasil prediksi per file audio.
+    """
+    from pathlib import Path
+    
+    mapping_df = df_meta.copy()
+    if "file_path" in mapping_df.columns and "file_name" not in mapping_df.columns:
+        mapping_df["file_name"] = mapping_df["file_path"].apply(lambda p: Path(str(p)).name)
+        
+    mapping_df["true_label"] = np.asarray(y_true)
+    mapping_df["predicted_label"] = np.asarray(y_pred)
+    mapping_df["confidence_score_fake"] = np.asarray(y_score)
+    mapping_df["is_correct"] = (mapping_df["true_label"] == mapping_df["predicted_label"])
+    
+    out_p = Path(out_csv_path)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+    mapping_df.to_csv(str(out_p), index=False)
+    print(f"[metrics] CSV Prediction Mapping saved -> {out_csv_path} ({len(mapping_df)} baris)")
+    return mapping_df
+
+
+def compute_per_generator_metrics(
+    df_mapping: pd.DataFrame,
+    out_csv_path: str | None = None,
+) -> pd.DataFrame:
+    """
+    Hitung metrik per-generator (Voxcpm, OpenVoice, F5TTS, E2TTS, Real, dst).
+    """
+    if "generator_source" not in df_mapping.columns:
+        print("[metrics] Kolom 'generator_source' tidak ditemukan untuk per-generator metrics.")
+        return pd.DataFrame()
+        
+    results = []
+    for gen, group in df_mapping.groupby("generator_source"):
+        if len(group) == 0:
+            continue
+        y_t = group["true_label"].values
+        y_s = group["confidence_score_fake"].values
+        y_p = group["predicted_label"].values
+        
+        acc = float(accuracy_score(y_t, y_p))
+        
+        # Calculate AUC and EER if both classes present in group
+        if len(np.unique(y_t)) > 1:
+            try:
+                auc = float(roc_auc_score(y_t, y_s))
+                eer, _ = compute_eer(y_t, y_s)
+            except Exception:
+                auc, eer = np.nan, np.nan
+        else:
+            auc, eer = np.nan, np.nan
+            
+        p_mac, r_mac, f1_mac, _ = precision_recall_fscore_support(
+            y_t, y_p, average="macro", zero_division=0
+        )
+        
+        results.append({
+            "generator_source": gen,
+            "n_samples": int(len(group)),
+            "accuracy": round(acc, 5),
+            "auc": round(auc, 5) if not np.isnan(auc) else None,
+            "eer": round(eer, 5) if not np.isnan(eer) else None,
+            "f1_macro": round(f1_mac, 5),
+            "correct_count": int(group["is_correct"].sum()),
+        })
+        
+    res_df = pd.DataFrame(results)
+    if out_csv_path and not res_df.empty:
+        from pathlib import Path
+        p = Path(out_csv_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        res_df.to_csv(str(p), index=False)
+        print(f"[metrics] Breakdown per generator saved -> {out_csv_path}")
+        
+    return res_df
 
 
 if __name__ == "__main__":
@@ -189,3 +281,4 @@ if __name__ == "__main__":
 
     m = compute_metrics(y, s, threshold=thr, split="test", model_id="random_baseline")
     print_metrics(m)
+
