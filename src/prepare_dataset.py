@@ -40,38 +40,36 @@ def check_eligibility(filepath, sr=16000, min_duration=1.0):
 
 def extract_speaker_id(filepath):
     """
-    Ekstrak speaker ID dari nama file.
-    Mendukung format VoxCeleb (id10001-real.wav), nama bebas, maupun
-    pesan WhatsApp (WhatsApp Ptt 2026-07-28 ...) yang semuanya akan
-    diperlakukan sebagai satu speaker berbeda per file.
+    Ekstrak speaker ID dari parent folder (misal: Suara_ayah, alpin, Suara_inut, Suara_mama, Andan, Farid, mbak_alifa, zahra)
+    atau dari nama file jika VoxCeleb/WhatsApp.
     """
-    stem = Path(filepath).stem.lower()
+    path_obj = Path(filepath)
+    parent_name = path_obj.parent.name
+    if parent_name.lower() in ["male", "female", "output_generate", "eval_generate", "f5tts_base", "e2tts_base", "e5tts_base"]:
+        parent_name = path_obj.parent.parent.name
+        
+    ignored_parents = {"training", "testing", "voxcpm", "openvoice", "f5tts", "e2tts", "e5tts", "folder_data_inti", "drive", "raw", "processed"}
+    if parent_name and parent_name.lower() not in ignored_parents:
+        return parent_name
 
-    # Format WhatsApp Ptt: gunakan nama file lengkap sebagai speaker unik
+    stem = path_obj.stem.lower()
     if stem.startswith("whatsapp ptt") or stem.startswith("whatsapp"):
-        # Pakai seluruh nama file agar setiap pesan suara = 1 speaker unik
         return stem
-
-    # Format VoxCeleb: id10001-real, id10002-spoof, dst.
     if stem.startswith("id") and "-" in stem:
         return stem.split("-")[0]
-
-    # Format dengan underscore: alvin_part1 -> alvin
     if "_" in stem:
         return stem.split("_")[0]
-
-    # Default: nama file penuh = 1 speaker unik
     return stem
 
 def detect_generator_source(filepath: str, label: str) -> str:
     path_clean = str(filepath).lower().replace("\\", "/").replace("_", "").replace("-", "").replace(" ", "")
-    if label == "real" and not any(k in path_clean for k in ["openvoice", "f5tts", "e2tts", "voxcpm"]):
+    if label == "real" and not any(k in path_clean for k in ["openvoice", "f5tts", "e2tts", "e5tts", "voxcpm"]):
         return "Real"
     if "openvoice" in path_clean:
         return "OpenVoice"
     elif "f5tts" in path_clean:
         return "F5TTS"
-    elif "e2tts" in path_clean:
+    elif "e2tts" in path_clean or "e5tts" in path_clean:
         return "E2TTS"
     elif "voxcpm" in path_clean:
         return "Voxcpm"
@@ -230,7 +228,7 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
         
     df["eligible"] = [e[0] for e in eligibility]
     df["reason"] = [e[1] for e in eligibility]
-    df["speaker_id"] = df["file_path"].apply(lambda x: extract_speaker_id(Path(x).stem))
+    df["speaker_id"] = df["file_path"].apply(lambda x: extract_speaker_id(x))
     
     df.to_csv(results_dir / "dataset_recap_raw.csv", index=False)
     
