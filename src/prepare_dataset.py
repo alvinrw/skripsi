@@ -192,17 +192,19 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     if kaggle_dirs:
         for k_dir in kaggle_dirs:
             if k_dir and os.path.exists(k_dir):
-                print(f"[scan] Scanning Kaggle dataset: {k_dir}")
+                print(f"[scan] Scanning Kaggle dataset (KHUSUS SUARA REAL): {k_dir}")
+                k_real_count = 0
                 for root, _, files in os.walk(k_dir):
                     for f in files:
                         ext = os.path.splitext(f)[1].lower()
                         if ext in audio_exts:
                             full_p = os.path.join(root, f).replace("\\", "/")
                             parts = full_p.lower().split("/")
-                            if "real" in parts:
+                            filename = Path(full_p).name.lower()
+                            if any(r in parts for r in ["real", "suara_real", "bonafide"]) or "real" in filename:
                                 real_files.append(full_p)
-                            elif "fake" in parts:
-                                fake_files.append(full_p)
+                                k_real_count += 1
+                print(f"[scan] Berhasil menambah {k_real_count} file REAL dari Kaggle (semua audio fake Kaggle diabaikan).")
                             
     print(f"[scan] Total ditemukan {len(real_files)} file real dan {len(fake_files)} file fake.")
 
