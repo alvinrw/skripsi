@@ -265,34 +265,45 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     # Shuffle Training Data pool
     df_train_pool = df_train_pool.sample(frac=1, random_state=2026).reset_index(drop=True)
     
-    print("\n>> Tahap 2: Pembagian Dataset Training (70% Train, 15% Test, 15% Validation)...")
-    unique_speakers = df_train_pool["speaker_id"].nunique()
-    print(f"  Jumlah pembicara unik di training set: {unique_speakers}")
+    print("\n>> Tahap 2: Pembagian Dataset Training (70% Train, 15% Validation, 15% Test)...")
     
-    if unique_speakers >= 5:
-        # GroupSplit based on speaker_id
+    # Split Real and Fake independently to ensure BOTH Real and Fake exist in train, validation, and test splits
+    df_real_pool = df_train_pool[df_train_pool["label"] == "real"].copy()
+    df_fake_pool = df_train_pool[df_train_pool["label"] == "fake"].copy()
+    
+    # 1. Split Real Pool (70% Train, 15% Val, 15% Test)
+    if len(df_real_pool) >= 3:
+        real_train, real_temp = train_test_split(df_real_pool, test_size=0.3, random_state=2026)
+        real_val, real_test = train_test_split(real_temp, test_size=0.5, random_state=2026)
+    else:
+        real_train, real_val, real_test = df_real_pool, pd.DataFrame(), pd.DataFrame()
+
+    # 2. Split Fake Pool (70% Train, 15% Val, 15% Test) by speaker if possible
+    fake_speakers = df_fake_pool["speaker_id"].nunique()
+    if fake_speakers >= 4:
         gss1 = GroupShuffleSplit(n_splits=1, test_size=0.3, random_state=2026)
-        train_idx, temp_idx = next(gss1.split(df_train_pool, groups=df_train_pool["speaker_id"]))
-        df_train = df_train_pool.iloc[train_idx]
-        df_temp = df_train_pool.iloc[temp_idx]
+        train_idx, temp_idx = next(gss1.split(df_fake_pool, groups=df_fake_pool["speaker_id"]))
+        fake_train = df_fake_pool.iloc[train_idx]
+        fake_temp = df_fake_pool.iloc[temp_idx]
         
         gss2 = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=2026)
-        val_idx, test_idx = next(gss2.split(df_temp, groups=df_temp["speaker_id"]))
-        df_val = df_temp.iloc[val_idx]
-        df_test = df_temp.iloc[test_idx]
+        val_idx, test_idx = next(gss2.split(fake_temp, groups=fake_temp["speaker_id"]))
+        fake_val = fake_temp.iloc[val_idx]
+        fake_test = fake_temp.iloc[test_idx]
     else:
-        print("  [WARNING] Pembicara terlalu sedikit. Fallback ke stratified random split.")
-        test_size_n = max(int(len(df_train_pool) * 0.15), 2)
-        try:
-            df_train, df_temp = train_test_split(df_train_pool, test_size=test_size_n*2, stratify=df_train_pool["label"], random_state=2026)
-            df_val, df_test = train_test_split(df_temp, test_size=0.5, stratify=df_temp["label"], random_state=2026)
-        except ValueError:
-            df_train, df_temp = train_test_split(df_train_pool, test_size=0.3, random_state=2026)
-            df_val, df_test = train_test_split(df_temp, test_size=0.5, random_state=2026)
-            
-    df_train_pool.loc[df_train.index, "split"] = "train"
-    df_train_pool.loc[df_val.index, "split"] = "validation"
-    df_train_pool.loc[df_test.index, "split"] = "test"
+        fake_train, fake_temp = train_test_split(df_fake_pool, test_size=0.3, random_state=2026)
+        fake_val, fake_test = train_test_split(fake_temp, test_size=0.5, random_state=2026)
+
+    # 3. Combine Real and Fake for each split
+    df_train = pd.concat([real_train, fake_train], ignore_index=True)
+    df_val = pd.concat([real_val, fake_val], ignore_index=True)
+    df_test = pd.concat([real_test, fake_test], ignore_index=True)
+
+    # Assign split tags to df_train_pool
+    df_train_pool["split"] = "train"
+    df_train_pool.loc[df_train_pool["file_path"].isin(df_train["file_path"]), "split"] = "train"
+    df_train_pool.loc[df_train_pool["file_path"].isin(df_val["file_path"]), "split"] = "validation"
+    df_train_pool.loc[df_train_pool["file_path"].isin(df_test["file_path"]), "split"] = "test"
     
     if not df_test_pool.empty:
         df_test_pool["split"] = "separate_test"
