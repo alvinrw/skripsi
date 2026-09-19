@@ -265,39 +265,21 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     # Shuffle Training Data pool
     df_train_pool = df_train_pool.sample(frac=1, random_state=2026).reset_index(drop=True)
     
-    print("\n>> Tahap 2: Pembagian Dataset Training (70% Train, 15% Validation, 15% Test)...")
+    print("\n>> Tahap 2: Pembagian Dataset Training (Direct Stratified Split: 70% Train, 15% Validation, 15% Test)...")
     
-    # Split Real and Fake independently to ensure BOTH Real and Fake exist in train, validation, and test splits
-    df_real_pool = df_train_pool[df_train_pool["label"] == "real"].copy()
-    df_fake_pool = df_train_pool[df_train_pool["label"] == "fake"].copy()
-    
-    # 1. Split Real Pool (70% Train, 15% Val, 15% Test)
-    if len(df_real_pool) >= 3:
-        real_train, real_temp = train_test_split(df_real_pool, test_size=0.3, random_state=2026)
-        real_val, real_test = train_test_split(real_temp, test_size=0.5, random_state=2026)
-    else:
-        real_train, real_val, real_test = df_real_pool, pd.DataFrame(), pd.DataFrame()
-
-    # 2. Split Fake Pool (70% Train, 15% Val, 15% Test) by speaker if possible
-    fake_speakers = df_fake_pool["speaker_id"].nunique()
-    if fake_speakers >= 4:
-        gss1 = GroupShuffleSplit(n_splits=1, test_size=0.3, random_state=2026)
-        train_idx, temp_idx = next(gss1.split(df_fake_pool, groups=df_fake_pool["speaker_id"]))
-        fake_train = df_fake_pool.iloc[train_idx]
-        fake_temp = df_fake_pool.iloc[temp_idx]
-        
-        gss2 = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=2026)
-        val_idx, test_idx = next(gss2.split(fake_temp, groups=fake_temp["speaker_id"]))
-        fake_val = fake_temp.iloc[val_idx]
-        fake_test = fake_temp.iloc[test_idx]
-    else:
-        fake_train, fake_temp = train_test_split(df_fake_pool, test_size=0.3, random_state=2026)
-        fake_val, fake_test = train_test_split(fake_temp, test_size=0.5, random_state=2026)
-
-    # 3. Combine Real and Fake for each split
-    df_train = pd.concat([real_train, fake_train], ignore_index=True)
-    df_val = pd.concat([real_val, fake_val], ignore_index=True)
-    df_test = pd.concat([real_test, fake_test], ignore_index=True)
+    # Directly split df_train_pool into 70% train, 15% val, 15% test stratified by label (real vs fake)
+    df_train, df_temp = train_test_split(
+        df_train_pool, 
+        test_size=0.3, 
+        stratify=df_train_pool["label"], 
+        random_state=2026
+    )
+    df_val, df_test = train_test_split(
+        df_temp, 
+        test_size=0.5, 
+        stratify=df_temp["label"], 
+        random_state=2026
+    )
 
     # Assign split tags to df_train_pool
     df_train_pool["split"] = "train"
