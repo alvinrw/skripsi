@@ -162,12 +162,15 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     if len(real_files) == 0:
         drive_parent = os.path.dirname(str(drive_dir))
         search_roots = [
+            os.path.join(str(drive_dir), "Suara_real"),
+            os.path.join(drive_parent, "Folder_data_inti/Suara_real"),
             os.path.join(drive_parent, "VoxCPM"),
             os.path.join(drive_parent, "Suara_real"),
             drive_parent,
+            "/content/drive/MyDrive/Folder_data_inti/Suara_real",
             "/content/drive/MyDrive/VoxCPM",
             "/content/drive/MyDrive",
-            "/content/drive/My Drive/VoxCPM",
+            "/content/drive/My Drive/Folder_data_inti/Suara_real",
             "/content/drive/My Drive"
         ]
         for s_root in search_roots:
