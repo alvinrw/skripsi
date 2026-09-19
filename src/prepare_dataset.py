@@ -251,6 +251,18 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     if len(df_train_pool) == 0:
         df_train_pool = df_valid.copy()
         df_test_pool = pd.DataFrame()
+
+    # Ensure df_test_pool has real audio samples if separate testing pool is present
+    if not df_test_pool.empty and len(df_test_pool[df_test_pool["label"] == "real"]) == 0:
+        real_in_train = df_train_pool[df_train_pool["label"] == "real"]
+        if not real_in_train.empty:
+            n_real_test = max(1, int(len(real_in_train) * 0.3))
+            real_test_sample = real_in_train.sample(n=n_real_test, random_state=2026)
+            df_train_pool = df_train_pool.drop(real_test_sample.index).reset_index(drop=True)
+            real_test_sample = real_test_sample.copy()
+            real_test_sample["intent"] = "testing"
+            df_test_pool = pd.concat([df_test_pool, real_test_sample], ignore_index=True)
+            print(f"[scan] Disertakan {len(real_test_sample)} file Suara_real ke dalam Separate Testing Pool agar seimbang.")
         
     # Shuffle Training Data pool
     df_train_pool = df_train_pool.sample(frac=1, random_state=2026).reset_index(drop=True)

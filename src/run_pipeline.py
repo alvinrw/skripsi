@@ -138,7 +138,7 @@ def step_prepare(cfg: dict, args: argparse.Namespace) -> bool:
     import sys
     from subprocess import run
     print("\n[Step 0b] Menjalankan persiapan dataset VoxCPM dari Google Drive...")
-    cmd = [sys.executable, "src/prepare_dataset.py", "--drive_dir", getattr(args, "drive_dir", "data/raw"), "--out_dir", getattr(args, "out_dir", "data/processed")]
+    cmd = [sys.executable, "-B", "src/prepare_dataset.py", "--drive_dir", getattr(args, "drive_dir", "data/raw"), "--out_dir", getattr(args, "out_dir", "data/processed")]
     if getattr(args, "zip_out", None):
         cmd += ["--zip_out", args.zip_out]
     if getattr(args, "kaggle_dirs", None):
