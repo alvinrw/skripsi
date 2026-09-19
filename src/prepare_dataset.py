@@ -96,12 +96,48 @@ def detect_intent(filepath: str) -> str:
     return "training"
 
 
+def scan_audio_files(target_dir_str: str) -> list[str]:
+    audio_exts = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
+    found_files = []
+    
+    candidates = [target_dir_str]
+    if "/MyDrive/" in target_dir_str:
+        candidates.append(target_dir_str.replace("/MyDrive/", "/My Drive/"))
+    elif "/My Drive/" in target_dir_str:
+        candidates.append(target_dir_str.replace("/My Drive/", "/MyDrive/"))
+        
+    resolved_dir = None
+    for cand in candidates:
+        if os.path.exists(cand):
+            resolved_dir = cand
+            break
+            
+    if not resolved_dir:
+        # Fallback search if path name differs
+        if os.path.exists("/content/drive/MyDrive"):
+            for root, dirs, _ in os.walk("/content/drive/MyDrive"):
+                if "folder_data_inti" in root.lower() or "voxcpm" in root.lower():
+                    resolved_dir = root
+                    break
+                    
+    if not resolved_dir:
+        return []
+        
+    print(f"[scan] Scanning audio files in: {resolved_dir}")
+    for root, _, files in os.walk(resolved_dir):
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
+            if ext in audio_exts:
+                found_files.append(os.path.join(root, f).replace("\\", "/"))
+                
+    return found_files
+
+
 def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     print("\n[mount] Bukan lingkungan Google Colab. Mount dilewati.")
     print("[reproducibility] Seed set to 2026")
     np.random.seed(2026)
     
-    drive_path = Path(drive_dir)
     out_path = Path(out_dir)
     manifests_dir = Path("manifests")
     results_dir = Path("results")
@@ -111,30 +147,42 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
     results_dir.mkdir(parents=True, exist_ok=True)
     
     audio_exts = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
-    all_scanned_files = [str(p) for p in drive_path.rglob("*") if p.is_file() and p.suffix.lower() in audio_exts]
+    all_scanned_files = scan_audio_files(str(drive_dir))
     
     real_files = []
     fake_files = []
     
     for f in all_scanned_files:
-        path_lower = f.lower().replace("\\", "/")
+        path_lower = f.lower()
         parts = path_lower.split("/")
         if any(r in parts for r in ["suara_real", "real", "bonafide"]):
             real_files.append(f)
         else:
             fake_files.append(f)
-    
-    # Fallback: jika suara real tidak ditemukan di drive_path, cari di VoxCPM / MyDrive
+            
+    # Fallback: jika suara real tidak ditemukan di drive_dir, cari di folder pendamping di Drive
     if len(real_files) == 0:
-        search_roots = [drive_path.parent / "VoxCPM", drive_path.parent, Path("/content/drive/MyDrive/VoxCPM"), Path("/content/drive/MyDrive")]
+        drive_parent = os.path.dirname(str(drive_dir))
+        search_roots = [
+            os.path.join(drive_parent, "VoxCPM"),
+            os.path.join(drive_parent, "Suara_real"),
+            drive_parent,
+            "/content/drive/MyDrive/VoxCPM",
+            "/content/drive/MyDrive",
+            "/content/drive/My Drive/VoxCPM",
+            "/content/drive/My Drive"
+        ]
         for s_root in search_roots:
-            if s_root.exists():
+            if s_root and os.path.exists(s_root) and s_root != str(drive_dir):
                 found_reals = []
-                for p in s_root.rglob("*"):
-                    if p.is_file() and p.suffix.lower() in audio_exts:
-                        parts = str(p).lower().replace("\\", "/").split("/")
-                        if any(r in parts for r in ["suara_real", "real", "bonafide"]):
-                            found_reals.append(str(p))
+                for root, _, files in os.walk(s_root):
+                    for f in files:
+                        ext = os.path.splitext(f)[1].lower()
+                        if ext in audio_exts:
+                            full_p = os.path.join(root, f).replace("\\", "/")
+                            parts = full_p.lower().split("/")
+                            if any(r in parts for r in ["suara_real", "real", "bonafide"]):
+                                found_reals.append(full_p)
                 if len(found_reals) > 0:
                     real_files.extend(found_reals)
                     print(f"[scan] Suara_real otomatis ditemukan dari lokasi: {s_root} ({len(found_reals)} file real)")
@@ -144,15 +192,19 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
         for k_dir in kaggle_dirs:
             if k_dir and os.path.exists(k_dir):
                 print(f"[scan] Scanning Kaggle dataset: {k_dir}")
-                for p in Path(k_dir).rglob("*"):
-                    if p.is_file() and p.suffix.lower() in audio_exts:
-                        parts = [part.lower() for part in p.parts]
-                        if "real" in parts:
-                            real_files.append(str(p))
-                        elif "fake" in parts:
-                            fake_files.append(str(p))
+                for root, _, files in os.walk(k_dir):
+                    for f in files:
+                        ext = os.path.splitext(f)[1].lower()
+                        if ext in audio_exts:
+                            full_p = os.path.join(root, f).replace("\\", "/")
+                            parts = full_p.lower().split("/")
+                            if "real" in parts:
+                                real_files.append(full_p)
+                            elif "fake" in parts:
+                                fake_files.append(full_p)
                             
     print(f"[scan] Total ditemukan {len(real_files)} file real dan {len(fake_files)} file fake.")
+
 
     
     all_files = []
