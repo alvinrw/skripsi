@@ -124,6 +124,22 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
         else:
             fake_files.append(f)
     
+    # Fallback: jika suara real tidak ditemukan di drive_path, cari di VoxCPM / MyDrive
+    if len(real_files) == 0:
+        search_roots = [drive_path.parent / "VoxCPM", drive_path.parent, Path("/content/drive/MyDrive/VoxCPM"), Path("/content/drive/MyDrive")]
+        for s_root in search_roots:
+            if s_root.exists():
+                found_reals = []
+                for p in s_root.rglob("*"):
+                    if p.is_file() and p.suffix.lower() in audio_exts:
+                        parts = str(p).lower().replace("\\", "/").split("/")
+                        if any(r in parts for r in ["suara_real", "real", "bonafide"]):
+                            found_reals.append(str(p))
+                if len(found_reals) > 0:
+                    real_files.extend(found_reals)
+                    print(f"[scan] Suara_real otomatis ditemukan dari lokasi: {s_root} ({len(found_reals)} file real)")
+                    break
+
     if kaggle_dirs:
         for k_dir in kaggle_dirs:
             if k_dir and os.path.exists(k_dir):
@@ -137,6 +153,7 @@ def process_dataset(drive_dir, out_dir, zip_out=None, kaggle_dirs=None):
                             fake_files.append(str(p))
                             
     print(f"[scan] Total ditemukan {len(real_files)} file real dan {len(fake_files)} file fake.")
+
     
     all_files = []
     for f in real_files:

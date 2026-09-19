@@ -28,7 +28,35 @@ from residual_features import (
 )
 from modulation_features import modulation_features, modulation_feature_names
 
+def resolve_existing_path(file_path: str) -> str:
+    if not file_path:
+        return file_path
+    if os.path.exists(file_path):
+        return file_path
+    
+    p = Path(file_path)
+    filename = p.name
+    parent_dir = p.parent.name
+    
+    candidates = [
+        Path("/content/dataset_processed") / parent_dir / filename,
+        Path("/content/VoxCPM_processed") / parent_dir / filename,
+        Path("data/processed") / parent_dir / filename,
+        Path("/content/dataset_processed/2s") / filename,
+        Path("/content/VoxCPM_processed/2s") / filename,
+        Path("data/processed/2s") / filename,
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return str(cand)
+            
+    return file_path
+
 def extract_utterance_features(file_path: str, cfg: dict, lpc_order: int = 16) -> dict | None:
+    file_path = resolve_existing_path(file_path)
+    if not file_path or not os.path.exists(file_path):
+        return None
+
     sr      = cfg["sample_rate"]
     seconds = cfg["segment_seconds"]
     hop_s   = cfg["hop_seconds"]
@@ -45,6 +73,7 @@ def extract_utterance_features(file_path: str, cfg: dict, lpc_order: int = 16) -
 
     if len(segments) == 0:
         return None
+
 
     # MFCC
     mfcc_vecs = []
