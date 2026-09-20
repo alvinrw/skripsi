@@ -262,14 +262,14 @@ def train_all(
         if not p.exists():
             raise FileNotFoundError(f"Feature CSV tidak ditemukan: {p}. Jalankan extract_features.py lebih dulu.")
 
-    df_train = pd.read_csv(train_csv, sep=None, engine='python')
-    df_val   = pd.read_csv(val_csv, sep=None, engine='python')
-    df_test  = pd.read_csv(test_csv, sep=None, engine='python')
+    df_train = pd.read_csv(train_csv, on_bad_lines='skip')
+    df_val   = pd.read_csv(val_csv, on_bad_lines='skip')
+    df_test  = pd.read_csv(test_csv, on_bad_lines='skip')
     
     df_sep_test = None
     if sep_test_csv.exists():
         print(f"[train] Found separate test features: {sep_test_csv}")
-        df_sep_test = pd.read_csv(sep_test_csv, sep=None, engine='python')
+        df_sep_test = pd.read_csv(sep_test_csv, on_bad_lines='skip')
 
     if smoke_test:
         df_train = df_train.head(50).copy()

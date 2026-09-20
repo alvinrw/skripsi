@@ -36,7 +36,7 @@ def check_leakage(manifest_csv: str = "manifests/split_manifest.csv") -> bool:
         print(f"[check_leakage] File tidak ditemukan: {manifest_csv}")
         return False
 
-    df = pd.read_csv(manifest_csv, sep=None, engine='python')
+    df = pd.read_csv(manifest_csv, on_bad_lines='skip')
 
     # Hanya periksa split dev (train/validation/test), abaikan external
     dev_splits = {"train", "validation", "test"}

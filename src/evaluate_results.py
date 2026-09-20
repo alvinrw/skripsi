@@ -18,7 +18,7 @@ def generate_report(scores_csv: str, manifest_csv: str, out_dir: str):
         return False
         
     df_scores = pd.read_csv(scores_csv)
-    df_manifest = pd.read_csv(manifest_csv, sep=None, engine='python')
+    df_manifest = pd.read_csv(manifest_csv, on_bad_lines='skip')
     
     df_test = df_scores[df_scores['split'] == 'test'].copy()
     df_merged = pd.merge(df_test, df_manifest[['utterance_id', 'dataset', 'generator_id']], on='utterance_id', how='left')

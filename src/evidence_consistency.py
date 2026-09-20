@@ -60,7 +60,7 @@ def analyze_consistency(
     -------
     dict ringkasan hasil konsistensi
     """
-    df = pd.read_csv(scores_csv)
+    df = pd.read_csv(scores_csv, on_bad_lines='skip')
 
     if "split" in df.columns:
         df = df[df["split"] == split].copy()

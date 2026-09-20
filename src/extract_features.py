@@ -162,7 +162,7 @@ def extract_all_features(manifest_csv="manifests/split_manifest.csv", results_di
         if not m_path.exists():
             continue
         print(f"\n[extract] Loading manifest: {m_path}")
-        df = pd.read_csv(m_path, sep=None, engine='python')
+        df = pd.read_csv(m_path, on_bad_lines='skip')
         if smoke_test: df = df.head(smoke_n).copy()
 
         out_dir = Path(results_dir)
@@ -176,10 +176,15 @@ def extract_all_features(manifest_csv="manifests/split_manifest.csv", results_di
             # LOGIKA RESUME CHECKPOINT
             processed_ids = set()
             if out_csv.exists():
-                existing_df = pd.read_csv(out_csv)
-                if "utterance_id" in existing_df.columns:
-                    processed_ids = set(existing_df["utterance_id"].astype(str))
-                    print(f"\n[RESUME] Menemukan {len(processed_ids)} data di {out_csv.name}, melanjutkan sisanya...")
+                try:
+                    existing_df = pd.read_csv(out_csv, on_bad_lines='skip')
+                    if "utterance_id" in existing_df.columns:
+                        processed_ids = set(existing_df["utterance_id"].astype(str))
+                        print(f"\n[RESUME] Menemukan {len(processed_ids)} data di {out_csv.name}, melanjutkan sisanya...")
+                except Exception as e:
+                    print(f"\n[WARNING] CSV {out_csv.name} tidak valid ({e}). Memulai ulang penulisan untuk split '{split_name}'...")
+                    out_csv.unlink()
+                    processed_ids = set()
 
             to_process = df_split[~df_split["utterance_id"].astype(str).isin(processed_ids)]
             
