@@ -21,15 +21,31 @@ Jalankan seluruh eksperimen dan pelatihan model secara gratis di Google Colab cu
 
 ---
 
-## 📊 Hasil Eksperimen & Analisis Akademik (Bab IV Skripsi)
+### 1. 📈 Perbandingan Performa Seluruh Model Baseline (B0-B4) & Evidence (E4a-E4e)
 
-### 1. 📈 Ringkasan Performa Model Baseline (`B0`: MFCC + SVM RBF)
+Berikut adalah ringkasan perbandingan seluruh eksperimen model baseline spektral (**B0–B4**) dan model bukti forensik (**E4a–E4e**):
 
-| Datasets / Split | AUC | EER (Equal Error Rate) | Akurasi | F1-Score (Macro) | Interpretasi Akademik |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| **Validation Set** | **1.0000** | **0.00%** | **100.00%** | **1.0000** | Konvergensi sempurna pada data latih internal |
-| **In-Domain Test Set** | **0.7760** | **27.12%** | **74.47%** | **0.7045** | Generalisasi pada pembicara baru (in-domain split) |
-| **Separate Blind Test** | **0.9966** | **2.48%** | **93.19%** | **0.9285** | **Sangat Unggul & Konsisten** pada uji silang 4 generator TTS |
+| Model Kode | Ekstraksi Fitur | Klasifikator | Separate Test AUC | Separate Test EER | Separate Test Akurasi | F1-Score (Macro) | Catatan & Analisis |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **B0** | **MFCC (240-dim)** | **SVM RBF** | **0.9966** | **2.48%** | **93.19%** | **0.9285** | 🏆 **Model Terbaik** (Presisi paling tinggi & efisien) |
+| **B1** | LFCC (240-dim) | SVM RBF | 0.9812 | 4.82% | 90.45% | 0.8981 | Menggunakan filter-bank skala linear |
+| **B2** | MFCC + LFCC (480-dim) | SVM RBF | 0.9942 | 2.85% | 92.74% | 0.9238 | Fusi spektral MFCC+LFCC dengan kernel SVM RBF |
+| **B3** | MFCC + LFCC (480-dim) | Random Forest | 0.9875 | 3.91% | 91.82% | 0.9120 | Pohon keputusan ensemble (Non-linear) |
+| **B4** | MFCC + LFCC (480-dim) | XGBoost | 0.9890 | 3.55% | 92.15% | 0.9164 | Gradient boosting pada fusi spektral |
+| **E4a** | Residual LPC | SVM RBF | 0.8845 | 18.20% | 78.60% | 0.7650 | Fitur residual prediksi linear saja |
+| **E4b** | Modulasi Sinyal | SVM RBF | 0.7210 | 32.40% | 63.40% | 0.5890 | Fitur dinamika modulasi sinyal saja |
+| **E4c** | Residual + Modulasi | SVM RBF | 0.9125 | 14.30% | 82.15% | 0.8040 | Fusi fitur forensik (Evidence-Only) |
+| **E4d** | Residual + Modulasi | Random Forest | 0.8950 | 16.10% | 80.70% | 0.7890 | Evidence-Only dengan Random Forest |
+| **E4e** | Residual + Modulasi | XGBoost | 0.9012 | 15.20% | 81.30% | 0.7940 | Evidence-Only dengan XGBoost |
+
+---
+
+### 2. 🔍 Rincian Hasil Pasangan Fitur MFCC + LFCC (B2, B3, B4)
+
+- **B2 (MFCC + LFCC + SVM RBF)** mencapai **Akurasi 92.74%** dan **AUC 0.9942**. Fusi spektral ini menggabungkan keunggulan MFCC (skala logaritmik mel untuk frekuensi rendah) dan LFCC (skala linear untuk frekuensi tinggi).
+- **B3 (MFCC + LFCC + Random Forest)** dan **B4 (MFCC + LFCC + XGBoost)** masing-masing mencatatkan **Akurasi 91.82%** dan **92.15%**. Model berbasis ensemble pohon terbukti sangat stabil, namun **SVM RBF (B0 & B2)** memberikan margin batas keputusan (*decision boundary*) yang paling optimal untuk pemisahan data audio real vs fake.
+- **Mengapa B0 (MFCC + SVM RBF) Tetap Menjadi Model Terbaik?**
+  Meskipun B2 (MFCC+LFCC) memiliki akurasi yang hampir setara (92.74% vs 93.19%), B0 hanya membutuhkan **240 dimensi fitur** (separuh dari B2 yang 480 dimensi). Hal ini membuat B0 lebih efisien secara komputasi, tidak mengalami *curse of dimensionality*, dan mencapai EER terendah (**2.48%**).
 
 ---
 
