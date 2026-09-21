@@ -284,6 +284,7 @@ def step_bootstrap(cfg: dict, args: argparse.Namespace) -> bool:
 def step_evaluate(cfg: dict, args) -> bool:
     import traceback
     from evaluate_results import generate_report
+    from generate_figures import generate_all_figures
     dur_suffix = f"_{args.duration}" if getattr(args, "duration", None) else ""
     try:
         generate_report(
@@ -291,6 +292,7 @@ def step_evaluate(cfg: dict, args) -> bool:
             manifest_csv="manifests/split_manifest.csv",
             out_dir="results"
         )
+        generate_all_figures(results_dir="results", figures_dir="figures")
         return True
     except Exception as e:
         print(f"[Step 9] ERROR: {e}")
