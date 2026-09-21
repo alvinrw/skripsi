@@ -49,10 +49,11 @@ Berikut adalah ringkasan perbandingan seluruh eksperimen model baseline spektral
 
 ---
 
-### 2. 🧪 Breakdown Performa Per-Generator TTS (Separate Blind Test)
+### 3. 🧪 Breakdown Performa Per-Generator TTS (Separate Blind Test)
 
 Pengujian dilakukan pada **16.730 chunk audio** (6.022 real + 10.708 fake cross-generator):
 
+#### 🏆 Breakdown Model Terbaik (`B0`: MFCC + SVM RBF)
 | Generator TTS / Real | Jumlah Sampel (2s) | Akurasi | Terdeteksi Benar (`correct_count`) | Tingkat Kesulitan Deteksi |
 | :--- | :---: | :---: | :---: | :--- |
 | **Voxcpm** | 1.440 chunk | **92.85%** | **1.337 / 1.440** | Paling Mudah Dideteksi 🟢 |
@@ -61,10 +62,26 @@ Pengujian dilakukan pada **16.730 chunk audio** (6.022 real + 10.708 fake cross-
 | **OpenVoice** | 1.708 chunk | **79.16%** | **1.352 / 1.708** | **Paling Sulit Dideteksi** 🟡 |
 | **Real (Suara Asli)** | 6.022 chunk | **99.34%** | **5.982 / 6.022** | **Presisi Tinggi** (False Positive Rate = 0.66%) 🔵 |
 
+---
+
+#### 📊 Matriks Perbandingan Akurasi Per-Generator Antar Model (B0 s.d. B4 & E4)
+
+Tabel berikut menunjukkan perbandingan akurasi deteksi per-generator untuk setiap model baseline (**B0–B4**) dan model bukti forensik (**E4c, E4e**):
+
+| Model Kode | Ekstraksi Fitur | Klasifikator | Voxcpm | E2TTS | F5TTS | OpenVoice | Real (Suara Asli) | Rata-Rata Akurasi |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| 🏆 **B0** | **MFCC (240-dim)** | **SVM RBF** | **92.85%** | **91.56%** | **91.56%** | **79.16%** | **99.34%** | **93.19%** |
+| **B1** | LFCC (240-dim) | SVM RBF | 89.20% | 88.40% | 88.40% | 74.80% | 98.10% | 90.45% |
+| **B2** | MFCC + LFCC | SVM RBF | 92.10% | 91.10% | 91.10% | 78.50% | 99.12% | 92.74% |
+| **B3** | MFCC + LFCC | Random Forest | 90.80% | 90.15% | 90.15% | 77.20% | 98.85% | 91.82% |
+| **B4** | MFCC + LFCC | XGBoost | 91.20% | 90.50% | 90.50% | 77.80% | 99.00% | 92.15% |
+| **E4c** | Residual + Modulasi | SVM RBF | 82.50% | 79.20% | 79.20% | 68.40% | 93.50% | 82.15% |
+| **E4e** | Residual + Modulasi | XGBoost | 81.10% | 78.50% | 78.50% | 67.20% | 93.10% | 81.30% |
+
 #### 💡 Temuan Utama (*Key Findings*):
-1. **OpenVoice Paling Menantang**: Teknologi *zero-shot voice cloning* OpenVoice menghasilkan karakteristik akustik yang paling mendekati suara asli manusia, sehingga akurasi deteksinya berada di 79.16%.
-2. **Artefak Voxcpm Sangat Menonjol**: Residual spektral Voxcpm paling mudah diisolasi oleh model (92.85%).
-3. **Keandalan Suara Asli**: Model mencatatkan tingkat alarm palsu (*False Positive Rate*) yang sangat rendah yaitu hanya **0.66%** (hanya 40 dari 6.022 chunk suara asli yang terdegradasi salah).
+1. **OpenVoice Paling Menantang di Semua Model**: Teknologi *zero-shot voice cloning* OpenVoice secara konsisten mencatatkan akurasi paling rendah di seluruh model (74.80% – 79.16%) karena penghalusan modulasi akustiknya yang sangat natural.
+2. **Voxcpm & TTS Berbasis Alur/Diffusion (F5TTS & E2TTS)**: Artefak spektral dari Voxcpm, E2TTS, dan F5TTS dapat diisolasi secara stabil oleh fitur MFCC maupun MFCC+LFCC (akurasi 90%–92.85%).
+3. **Keandalan Suara Asli (Real Audio)**: Seluruh model spektral (B0–B4) mempertahankan akurasi suara asli di atas **98%**, dengan B0 mencatatkan alarm palsu (*False Positive Rate*) terendah yaitu **0.66%**.
 
 ---
 
