@@ -1,23 +1,27 @@
-{
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "metadata": {},
-      "source": [
+import json
+from pathlib import Path
+
+nb_path = Path(r"C:\Users\alvin\Documents\Coolyeah\Skirpsi\Teknikal\fase 2\Generate_Voice_Cloning_Colab.ipynb")
+
+cell1_md = {
+    "cell_type": "markdown",
+    "metadata": {},
+    "source": [
         "# 🎙️ Batch Voice Cloning (VoxCPM, F5-TTS, OpenVoice) - Optimized for Colab T4\n",
         "\n",
         "Notebook ini dioptimalkan untuk memproses **banyak speaker & model** secara efisien di Google Colab T4 tanpa kena limit RAM/VRAM:\n",
         "1. **Smart Resume (Skip Existing)**: Apabila file MP3 sudah ada di Google Drive, otomatis dilewati agar tidak buang-buang waktu & VRAM.\n",
         "2. **Model-First Batching**: Model di-load 1x untuk semua speaker, bukan bolak-balik load/unload yang bikin CUDA Memory Leak.\n",
         "3. **Automatic Memory Cleanup**: Pembersihan VRAM otomatis (`torch.cuda.empty_cache()` & `gc.collect()`) setelah setiap pemrosesan.\n"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {},
-      "outputs": [],
-      "source": [
+    ]
+}
+
+cell2_code = {
+    "cell_type": "code",
+    "execution_count": None,
+    "metadata": {},
+    "outputs": [],
+    "source": [
         "from google.colab import drive\n",
         "from pathlib import Path\n",
         "import os, shutil, subprocess\n",
@@ -29,14 +33,15 @@
         "DRIVE_OUT.mkdir(parents=True, exist_ok=True)\n",
         "\n",
         "print(\"✅ Google Drive terhubung. Output akan disimpan ke:\", DRIVE_OUT)\n"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {},
-      "outputs": [],
-      "source": [
+    ]
+}
+
+cell3_code = {
+    "cell_type": "code",
+    "execution_count": None,
+    "metadata": {},
+    "outputs": [],
+    "source": [
         "# ============================================================\n",
         "# KONFIGURASI BATCH & PILIHAN MODEL\n",
         "# ============================================================\n",
@@ -55,14 +60,15 @@
         "print(f\"   - Models      : {MODELS_TO_RUN}\")\n",
         "print(f\"   - Skip Exists : {SKIP_EXISTING}\")\n",
         "print(f\"   - Batch Range : {BATCH_START_INDEX} s/d {BATCH_START_INDEX + BATCH_MAX_COUNT}\")\n"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {},
-      "outputs": [],
-      "source": [
+    ]
+}
+
+cell4_code = {
+    "cell_type": "code",
+    "execution_count": None,
+    "metadata": {},
+    "outputs": [],
+    "source": [
         "import os\n",
         "import sys\n",
         "import gc\n",
@@ -78,8 +84,6 @@
         "OUT = ROOT / \"generated_voice_cloning\"\n",
         "REF_ROOT.mkdir(parents=True, exist_ok=True)\n",
         "OUT.mkdir(parents=True, exist_ok=True)\n",
-        "DRIVE_OUT = Path(\"/content/drive/MyDrive/data skirpsi/VoiceCloning\")\n",
-        "DRIVE_OUT.mkdir(parents=True, exist_ok=True)\n",
         "\n",
         "TEXTS = {\n",
         "    \"id\": \"Indonesia adalah negara kepulauan yang kaya budaya, bahasa, sumber daya alam, serta memiliki masyarakat beragam yang hidup saling berdampingan harmonis.\",\n",
@@ -91,7 +95,7 @@
         "    subprocess.run(list(map(str, args)), cwd=cwd, check=True)\n",
         "\n",
         "def install(*packages: str) -> None:\n",
-        "    run(sys.executable, \"-m\", \"pip\", \"install\", \"--no-build-isolation\", *packages)\n",
+        "    run(sys.executable, \"-m\", \"pip\", \"install\", \"-q\", *packages)\n",
         "\n",
         "def free_memory() -> None:\n",
         "    gc.collect()\n",
@@ -116,63 +120,45 @@
         "def mp3_from_wav(wav_path: Path, mp3_path: Path) -> None:\n",
         "    run(\"ffmpeg\", \"-y\", \"-i\", str(wav_path), \"-b:a\", \"192k\", str(mp3_path))\n",
         "\n",
-        "def extract_dataset() -> None:\n",
-        "    drive_folder = Path(\"/content/drive/MyDrive/Dataskripsi\")\n",
-        "    if not drive_folder.exists():\n",
-        "        candidates = list(Path(\"/content/drive/MyDrive\").rglob(\"*Dataskripsi*\"))\n",
-        "        if candidates:\n",
-        "            drive_folder = candidates[0]\n",
-        "        else:\n",
-        "            raise FileNotFoundError(\"Folder 'Dataskripsi' tidak ditemukan di MyDrive Google Drive!\")\n",
-        "            \n",
-        "    print(f\"📂 Scanning rekursif folder reference dari: {drive_folder}\")\n",
-        "    audio_exts = {\".wav\", \".mp3\", \".m4a\", \".ogg\", \".flac\"}\n",
-        "    copied_count = 0\n",
-        "    \n",
-        "    for f in drive_folder.rglob(\"*\"):\n",
-        "        if f.is_file() and f.suffix.lower() in audio_exts:\n",
-        "            target_name = f.name\n",
-        "            if f.suffix.lower() != \".wav\":\n",
-        "                target_name = f.stem + \".wav\"\n",
-        "                target_path = REF_ROOT / target_name\n",
-        "                if not target_path.exists():\n",
-        "                    run(\"ffmpeg\", \"-y\", \"-i\", str(f), \"-ar\", \"24000\", \"-ac\", \"1\", str(target_path))\n",
-        "                    copied_count += 1\n",
-        "            else:\n",
-        "                target_path = REF_ROOT / target_name\n",
-        "                if not target_path.exists():\n",
-        "                    shutil.copy2(f, target_path)\n",
-        "                    copied_count += 1\n",
-        "    print(f\"  ✅ Found & Prepared {copied_count} reference audio file(s) di {REF_ROOT}\")\n",
+        "def locate_dataset_zip() -> Path:\n",
+        "    candidates = list(INPUT.rglob(\"Dataskripsi.zip\")) + list(INPUT.rglob(\"*.zip\")) + list(Path(\"/content/drive/MyDrive/Dataskripsi\").rglob(\"*.zip\"))\n",
+        "    if not candidates:\n",
+        "        # Check if extracted folder exists\n",
+        "        drive_folder = Path(\"/content/drive/MyDrive/Dataskripsi\")\n",
+        "        if drive_folder.exists():\n",
+        "            return drive_folder\n",
+        "        raise FileNotFoundError(\"Dataskripsi.zip atau folder Dataskripsi di Google Drive tidak ditemukan!\")\n",
+        "    return candidates[0]\n",
         "\n",
-        "def scan_speakers() -> dict[str, dict[str, Path]]:\n",
-        "    extract_dataset()\n",
-        "    speaker_map = {}\n",
-        "    \n",
-        "    for p in REF_ROOT.glob(\"*.wav\"):\n",
-        "        name = p.stem\n",
-        "        lang = \"id\"\n",
-        "        spk_id = name\n",
+        "def extract_dataset() -> None:\n",
+        "    if list(REF_ROOT.glob(\"*.wav\")):\n",
+        "        return\n",
+        "    source = locate_dataset_zip()\n",
+        "    if source.is_dir():\n",
+        "        print(f\"📂 Menggunakan folder reference dari: {source}\")\n",
+        "        for f in source.rglob(\"*.wav\"):\n",
+        "            shutil.copy2(f, REF_ROOT / f.name)\n",
+        "        return\n",
         "        \n",
-        "        if name.startswith(\"Suaraindo_\"):\n",
-        "            spk_id = name[len(\"Suaraindo_\"):]\n",
-        "            lang = \"id\"\n",
-        "        elif name.startswith(\"Suaraeng_\"):\n",
-        "            spk_id = name[len(\"Suaraeng_\"):]\n",
-        "            lang = \"en\"\n",
-        "        elif \"_\" in name:\n",
-        "            parts = name.split(\"_\")\n",
-        "            spk_id = parts[-1]\n",
-        "            \n",
-        "        if spk_id not in speaker_map:\n",
-        "            speaker_map[spk_id] = {\"id\": p, \"en\": p}\n",
-        "            \n",
-        "        if lang == \"id\":\n",
-        "            speaker_map[spk_id][\"id\"] = p\n",
-        "        elif lang == \"en\":\n",
-        "            speaker_map[spk_id][\"en\"] = p\n",
-        "            \n",
-        "    return speaker_map\n",
+        "    print(f\"📦 Mengekstrak dataset dari: {source}\")\n",
+        "    with zipfile.ZipFile(source) as zf:\n",
+        "        zf.extractall(REF_ROOT)\n",
+        "    for p in list(REF_ROOT.rglob(\"*\")):\n",
+        "        if p.is_file() and p.parent != REF_ROOT:\n",
+        "            target = REF_ROOT / p.name\n",
+        "            if not target.exists():\n",
+        "                shutil.move(str(p), str(target))\n",
+        "\n",
+        "def scan_speakers() -> list[str]:\n",
+        "    extract_dataset()\n",
+        "    speakers = set()\n",
+        "    for p in REF_ROOT.rglob(\"Suaraindo_*.wav\"):\n",
+        "        speakers.add(p.stem[len(\"Suaraindo_\"):])\n",
+        "    if not speakers:\n",
+        "        for p in REF_ROOT.rglob(\"*.wav\"):\n",
+        "            if \"_\" in p.stem:\n",
+        "                speakers.add(p.stem.split(\"_\")[-1])\n",
+        "    return sorted(list(speakers))\n",
         "\n",
         "def sync_single_file(src_mp3: Path, model_name: str) -> None:\n",
         "    if not src_mp3.exists(): return\n",
@@ -180,17 +166,16 @@
         "    target_dir.mkdir(parents=True, exist_ok=True)\n",
         "    dst_mp3 = target_dir / src_mp3.name\n",
         "    shutil.copy2(src_mp3, dst_mp3)\n",
-        "    print(f\"  ☁️ Disalin ke Drive: {dst_mp3.name} ({src_mp3.stat().st_size / 1024:.1f} KB)\", flush=True)\n",
+        "    print(f'  Disalin ke Drive: {dst_mp3.name} ({src_mp3.stat().st_size / 1024:.1f} KB)', flush=True)\n",
         "\n",
         "# ============================================================\n",
         "# BATCH ENGINE OPTIMIZED FOR T4 (MODEL-FIRST PIPELINE)\n",
         "# ============================================================\n",
         "\n",
         "def run_batch_generation():\n",
-        "    speaker_map = scan_speakers()\n",
-        "    all_speakers = sorted(list(speaker_map.keys()))\n",
+        "    all_speakers = scan_speakers()\n",
         "    if not all_speakers:\n",
-        "        print(\"❌ Tidak ada speaker WAV/MP3/M4A yang ditemukan di folder Dataskripsi.\")\n",
+        "        print(\"❌ Tidak ada speaker WAV yang ditemukan di reference data.\")\n",
         "        return\n",
         "        \n",
         "    selected_speakers = all_speakers[BATCH_START_INDEX : BATCH_START_INDEX + BATCH_MAX_COUNT]\n",
@@ -201,15 +186,17 @@
         "    # ────────────────────────────────────────────────────────────\n",
         "    if \"F5-TTS\" in MODELS_TO_RUN:\n",
         "        print(\"\\n==================== MODEL: F5-TTS ====================\", flush=True)\n",
-        "        run(sys.executable, \"-m\", \"pip\", \"install\", \"-q\", \"f5-tts\")\n",
+        "        install(\"f5-tts\")\n",
         "        out_dir = OUT / \"F5-TTS\"\n",
         "        out_dir.mkdir(parents=True, exist_ok=True)\n",
         "        drive_model_dir = DRIVE_OUT / \"F5-TTS\"\n",
         "        drive_model_dir.mkdir(parents=True, exist_ok=True)\n",
         "        \n",
         "        for spk in selected_speakers:\n",
-        "            ref_id = speaker_map[spk][\"id\"]\n",
-        "            ref_en = speaker_map[spk][\"en\"]\n",
+        "            ref_id = REF_ROOT / f\"Suaraindo_{spk}.wav\"\n",
+        "            ref_en = REF_ROOT / f\"Suaraeng_{spk}.wav\"\n",
+        "            if not ref_id.exists(): ref_id = list(REF_ROOT.glob(f\"*{spk}*.wav\"))[0]\n",
+        "            if not ref_en.exists(): ref_en = ref_id\n",
         "            \n",
         "            for lang, text, ref in ((\"id\", TEXTS[\"id\"], ref_id), (\"en\", TEXTS[\"en\"], ref_en)):\n",
         "                final_mp3_name = f\"{spk}_{lang}.mp3\"\n",
@@ -240,23 +227,10 @@
         "        repo = ROOT / \"OpenVoice\"\n",
         "        if not repo.exists():\n",
         "            run(\"git\", \"clone\", \"--depth\", \"1\", \"https://github.com/myshell-ai/OpenVoice.git\", str(repo))\n",
+        "        install(\"git+https://github.com/myshell-ai/MeloTTS.git\", \"unidic\")\n",
+        "        run(sys.executable, \"-m\", \"unidic\", \"download\")\n",
+        "        install(\"-e\", str(repo))\n",
         "        \n",
-        "        # MeCab system dependencies for MeloTTS\n",
-        "        try:\n",
-        "            run(\"apt-get\", \"update\", \"-qq\")\n",
-        "            run(\"apt-get\", \"install\", \"-y\", \"-qq\", \"mecab\", \"libmecab-dev\", \"mecab-ipadic-utf8\")\n",
-        "        except Exception as e:\n",
-        "            print(f\"  ℹ️ MeCab apt-get install skipped or non-ubuntu: {e}\", flush=True)\n",
-        "            \n",
-        "        run(sys.executable, \"-m\", \"pip\", \"install\", \"-q\", \"--upgrade\", \"pip\", \"setuptools\", \"wheel\")\n",
-        "        run(sys.executable, \"-m\", \"pip\", \"install\", \"-q\", \"mecab-python3\", \"unidic\", \"num2words\", \"pythainlp\", \"subword_nmt\", \"cached_path\")\n",
-        "        run(sys.executable, \"-m\", \"pip\", \"install\", \"-q\", \"--no-deps\", \"git+https://github.com/myshell-ai/MeloTTS.git\")\n",
-        "        try:\n",
-        "            run(sys.executable, \"-m\", \"unidic\", \"download\")\n",
-        "        except Exception:\n",
-        "            pass\n",
-        "        run(sys.executable, \"-m\", \"pip\", \"install\", \"-q\", \"-e\", str(repo))\n",
-        "\n",
         "        ckpt = repo / \"checkpoints_v2\"\n",
         "        if not ckpt.exists():\n",
         "            url = \"https://myshell-public-repo-host.s3.amazonaws.com/openvoice/checkpoints_v2_0417.zip\"\n",
@@ -286,8 +260,10 @@
         "        source_se = torch.load(str(repo / \"checkpoints_v2\" / \"base_speakers\" / \"ses\" / \"en-us.pth\"), map_location=device)\n",
         "        \n",
         "        for spk in selected_speakers:\n",
-        "            ref_id = speaker_map[spk][\"id\"]\n",
-        "            ref_en = speaker_map[spk][\"en\"]\n",
+        "            ref_id = REF_ROOT / f\"Suaraindo_{spk}.wav\"\n",
+        "            ref_en = REF_ROOT / f\"Suaraeng_{spk}.wav\"\n",
+        "            if not ref_id.exists(): ref_id = list(REF_ROOT.glob(f\"*{spk}*.wav\"))[0]\n",
+        "            if not ref_en.exists(): ref_en = ref_id\n",
         "            \n",
         "            try:\n",
         "                target_id, _ = se_extractor.get_se(str(ref_id), converter, vad=True, target_dir=str(ROOT / \"processed\"))\n",
@@ -334,8 +310,10 @@
         "            drive_model_dir.mkdir(parents=True, exist_ok=True)\n",
         "            \n",
         "            for spk in selected_speakers:\n",
-        "                ref_id = speaker_map[spk][\"id\"]\n",
-        "                ref_en = speaker_map[spk][\"en\"]\n",
+        "                ref_id = REF_ROOT / f\"Suaraindo_{spk}.wav\"\n",
+        "                ref_en = REF_ROOT / f\"Suaraeng_{spk}.wav\"\n",
+        "                if not ref_id.exists(): ref_id = list(REF_ROOT.glob(f\"*{spk}*.wav\"))[0]\n",
+        "                if not ref_en.exists(): ref_en = ref_id\n",
         "                \n",
         "                for lang, text, ref in ((\"id\", TEXTS[\"id\"], ref_id), (\"en\", TEXTS[\"en\"], ref_en)):\n",
         "                    final_mp3_name = f\"{spk}_{lang}.mp3\"\n",
@@ -366,21 +344,21 @@
         "\n",
         "if __name__ == \"__main__\":\n",
         "    run_batch_generation()\n"
-      ]
-    }
-  ],
-  "metadata": {
-    "colab": {
-      "provenance": []
-    },
-    "kernelspec": {
-      "display_name": "Python 3",
-      "name": "python3"
-    },
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "nbformat": 4,
-  "nbformat_minor": 0
+    ]
 }
+
+nb_content = {
+    "cells": [cell1_md, cell2_code, cell3_code, cell4_code],
+    "metadata": {
+        "colab": {"provenance": []},
+        "kernelspec": {"display_name": "Python 3", "name": "python3"},
+        "language_info": {"name": "python"}
+    },
+    "nbformat": 4,
+    "nbformat_minor": 0
+}
+
+with open(nb_path, 'w', encoding='utf-8') as f:
+    json.dump(nb_content, f, indent=1, ensure_ascii=False)
+
+print(f"Successfully updated {nb_path}")
